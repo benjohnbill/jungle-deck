@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>발표 제목</title>
+
+<!--
+  Default fonts (optional). The style comes from the student's DESIGN.md, or
+  from frontend-slides style discovery when there is none. To use the author's
+  default, uncomment these lines and the IBM Plex tokens in :root below.
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+-->
+
+<!--
+  Stage runtime (jungle-deck templates/stage.html)
+
+  Keys
+    → / Space / PageDown : next step on this slide; after the last step, next slide
+    ← / PageUp           : hide the last step; with none shown, previous slide
+    N                    : toggle the speaker-notes panel
+    E (or top-left corner): edit mode; click slide text or notes to change it
+    Ctrl+S               : download the edited deck as an HTML file (Esc leaves the caret)
+    Home / End           : first / last slide
+    #3 at the end of the URL : open slide 3
+
+  Authoring
+    Steps : put data-step="1", "2", ... on elements; they appear in that order
+    Notes : edit <aside class="notes" data-sec="15"> inside each <section>
+            (hidden on the slide). Start a paragraph with <span class="st">▸2</span>
+            to tie it to step 2.
+    Ids   : keep <section id="sN">; the merge-back script matches edits by it.
+-->
+
+<style>
+/* ===========================================
+   1. Theme tokens. Every color lives here.
+   PLACEHOLDER values: the real style comes from the student's DESIGN.md,
+   or from frontend-slides style discovery (Phase 2) for a first deck.
+   =========================================== */
+:root {
+    --paper:   #ffffff;
+    --ink:     #111111;
+    --acc:     #3d5a80;               /* placeholder accent, neutral slate; the only accent, used for text */
+    --hl:      rgba(61,90,128,.13);   /* code-line highlight fill; the only filled accent */
+    --edit-bg: rgba(61,90,128,.05);   /* focused field in edit mode */
+    --grid:    #ebebeb;
+    --mut:     #5e5e5e;
+    --dim:     #8a8a8a;               /* code comments, elided lines */
+    --panel:   #f5f5f4;
+    --panel-b: #111111;
+    --cap-b:   rgba(17,17,17,.25);    /* panel caption rule */
+    --shadow:  rgba(0,0,0,.08);
+
+    /* System fonts by default. Author's default (uncomment with the <link> above):
+    --font-body: 'IBM Plex Sans KR', sans-serif;
+    --font-mono: 'IBM Plex Mono', 'IBM Plex Sans KR', monospace;
+    */
+    --font-body: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+    /* Type and spacing scale with the viewport (frontend-slides viewport contract) */
+    --title-size: clamp(2.2rem, 4.4vw, 7rem);
+    --h2-size:    clamp(1.35rem, 2.15vw, 3rem);
+    --h3-size:    clamp(1.1rem, 1.6vw, 2.2rem);
+    --body-size:  clamp(0.95rem, 1.2vw, 1.7rem);
+    --small-size: clamp(0.72rem, 0.8vw, 1.15rem);
+    --code-size:  clamp(0.8rem, min(1.1vw, 2vh), 1.65rem);
+
+    --slide-padding: clamp(1rem, 4vw, 4rem);
+    --content-gap:   clamp(0.5rem, 1.8vh, 1.6rem);
+    --element-gap:   clamp(0.25rem, 1vw, 1rem);
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur:  0.5s;
+}
+
+/* ===========================================
+   2. Viewport contract, from vendor/frontend-slides/viewport-base.css.
+   The scroll-snap rules are left out: the stage shows one fixed slide at a time.
+   =========================================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+}
+
+.slide {
+    position: fixed; inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;   /* dynamic viewport height for mobile browsers */
+    display: flex; flex-direction: column;
+    overflow: hidden; /* never let a slide scroll */
+}
+.slide-content {
+    flex: 1; min-height: 0; max-height: 100%;
+    display: flex; flex-direction: column; justify-content: center;
+    overflow: hidden;
+    gap: var(--content-gap);
+    padding: clamp(.5rem, 1.4vh, 1.1rem) var(--slide-padding);
+    position: relative; z-index: 2;
+}
+.card, .container, .content-box {
+    max-width: min(90vw, 1000px);
+    max-height: min(80vh, 700px);
+}
+.feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+.feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+img, .image-container {
+    max-width: 100%;
+    max-height: min(50vh, 400px);
+    object-fit: contain;
+}
+
+/* Short viewports (< 700px height) */
+@media (max-height: 700px) {
+    :root {
+        --slide-padding: clamp(0.75rem, 3vw, 2rem);
+        --content-gap:   clamp(.35rem, 1.2vh, .8rem);
+        --title-size:    clamp(1.4rem, 4.2vw, 2.6rem);
+        --h2-size:       clamp(1.05rem, 2.6vw, 1.8rem);
+    }
+}
+/* Very short viewports (< 600px height) */
+@media (max-height: 600px) {
+    :root {
+        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+        --content-gap:   clamp(0.3rem, 1vw, 0.75rem);
+        --title-size:    clamp(1.1rem, 4vw, 2rem);
+        --body-size:     clamp(0.7rem, 1.2vw, 0.95rem);
+    }
+    /* Hide non-essential elements */
+    .nav-dots, .keyboard-hint, .decorative { display: none; }
+}
+/* Extremely short (landscape phones, < 500px height) */
+@media (max-height: 500px) {
+    :root {
+        --slide-padding: clamp(0.4rem, 2vw, 1rem);
+        --title-size:    clamp(1rem, 3.5vw, 1.5rem);
+        --h2-size:       clamp(0.9rem, 2.5vw, 1.25rem);
+        --body-size:     clamp(0.65rem, 1vw, 0.85rem);
+    }
+}
+/* Narrow viewports (< 600px width) */
+@media (max-width: 600px) {
+    :root { --title-size: clamp(1.3rem, 7vw, 2.4rem); }
+    .grid, .panels { grid-template-columns: 1fr !important; }
+}
+
+/* ===========================================
+   3. Stage: one slide visible at a time
+   =========================================== */
+.slide {
+    background: var(--paper);
+    opacity: 0; visibility: hidden;
+    transition: opacity .35s ease, visibility 0s linear .35s;
+}
+.slide.active {
+    opacity: 1; visibility: visible; z-index: 2;
+    transition: opacity .35s ease, visibility 0s;
+}
+/* The leaving slide does not fade; it stays underneath. If both slides were
+   half-transparent at once, lines in the same place (head rule, grid) would
+   dim and come back. */
+.slide.leaving {
+    opacity: 1; visibility: visible; z-index: 1;
+    transition: none;
+}
+/* Background 12-column grid */
+.slide::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(90deg, var(--grid) 0 1px, transparent 1px 8.3333%);
+    opacity: .6; z-index: 0;
+}
+
+/* Head and foot bands */
+.head {
+    position: relative; z-index: 2;
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 2px solid var(--ink);
+    padding: clamp(1rem, 3.2vh, 2.4rem) var(--slide-padding) clamp(.4rem, 1vh, .7rem);
+    font-family: var(--font-mono); font-size: var(--small-size); color: var(--mut);
+}
+.head .num { letter-spacing: .1em; }
+.foot {
+    position: relative; z-index: 2;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--ink);
+    margin: 0 var(--slide-padding) clamp(1rem, 3vh, 2.2rem);
+    padding-top: clamp(.35rem, 1vh, .6rem);
+    font-family: var(--font-mono); font-size: var(--small-size); color: var(--mut);
+}
+
+h1, h2, p, li, td, .foot span, .head span { word-break: keep-all; text-wrap: pretty; }
+h1, h2 { text-wrap: balance; }
+
+/* ===========================================
+   4. Text elements
+   =========================================== */
+h1 {
+    font-weight: 700; line-height: 1.22; letter-spacing: -.02em;
+    font-size: var(--title-size); max-width: 20ch;
+}
+h1 em, h2 em { font-style: normal; color: var(--acc); }
+h2 {
+    font-weight: 700; line-height: 1.3; letter-spacing: -.015em;
+    font-size: var(--h2-size); max-width: 34ch;
+}
+.kicker {
+    align-self: flex-start;
+    font-family: var(--font-mono); font-size: var(--small-size);
+    letter-spacing: .2em; text-transform: uppercase;
+    color: var(--acc); border: 1.5px solid var(--acc); padding: .3em .7em;
+}
+.rule { width: clamp(70px, 9vw, 180px); height: clamp(6px, .55vw, 12px); background: var(--ink); }
+
+/* One-line conclusion */
+.punch {
+    font-size: clamp(1rem, 1.3vw, 1.9rem); font-weight: 500; line-height: 1.5;
+    max-width: 62ch;
+}
+.punch::before {
+    content: ""; display: inline-block; width: .6em; height: .6em;
+    background: var(--acc); margin-right: .55em; vertical-align: .02em;
+}
+.punch b { color: var(--acc); font-weight: 700; }
+.punch code, .rows code, .hint code { font-family: var(--font-mono); font-weight: 600; }
+.hint {
+    font-size: var(--small-size); color: var(--mut); line-height: 1.55;
+    margin-top: .25em; padding-left: 1.15em;
+}
+.ask { font-size: clamp(1.2rem, 1.7vw, 2.4rem); font-weight: 700; }
+
+/* ===========================================
+   5. Code panels: code, debugger, and compiler output share one light panel
+   =========================================== */
+.panels {
+    display: grid; gap: clamp(.6rem, 1.6vw, 1.4rem);
+    grid-template-columns: 1fr 1fr; align-items: start;
+}
+.panel {
+    border: 2px solid var(--panel-b);
+    background: var(--panel);
+    min-width: 0; overflow: hidden;
+}
+.panel.accent { border-color: var(--acc); }
+/* Panel caption: light, no dark band */
+.cap {
+    display: flex; justify-content: space-between; gap: .8em;
+    font-family: var(--font-mono); font-size: var(--small-size); font-weight: 500;
+    letter-spacing: .04em; color: var(--mut);
+    padding: .4em .8em; border-bottom: 1.5px solid var(--cap-b);
+}
+.cap .side { color: var(--acc); }
+pre {
+    font-family: var(--font-mono); font-size: var(--code-size);
+    line-height: 1.55; white-space: pre; tab-size: 4;
+    padding: clamp(.5rem, 1.4vh, 1rem) clamp(.7rem, 1.3vw, 1.2rem);
+    overflow: hidden;
+}
+pre.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.c-hit { color: var(--acc); font-weight: 600; }
+.c-com, .c-dim { color: var(--dim); }
+.hl { background: var(--hl); color: var(--acc); font-weight: 600; display: block; }
+.hl .c-com { color: var(--acc); opacity: .75; }
+
+/* Comparison table */
+.rows {
+    border-collapse: collapse; background: var(--paper);
+    font-size: clamp(.9rem, 1.15vw, 1.7rem);
+}
+.rows th, .rows td { border: 2px solid var(--ink); padding: .45em .9em; text-align: left; vertical-align: top; }
+.rows th { font-family: var(--font-mono); font-weight: 500; font-size: var(--small-size); letter-spacing: .06em; color: var(--mut); }
+.rows tr.hit td { color: var(--acc); font-weight: 600; }
+
+.closing h1 { max-width: none; text-wrap: wrap; font-size: clamp(1.8rem, 3.3vw, 5.2rem); }
+.closing h1 + h1 { color: var(--acc); }
+.thanks { font-family: var(--font-mono); font-size: var(--body-size); color: var(--mut); }
+
+/* ===========================================
+   6. Step reveal: space is reserved, only visibility changes (no layout jump)
+   =========================================== */
+[data-step] {
+    opacity: 0; visibility: hidden; transform: translateY(14px);
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility 0s linear var(--dur);
+}
+[data-step].on {
+    opacity: 1; visibility: visible; transform: none;
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; transition-delay: 0s !important; animation-duration: .01ms !important; }
+    [data-step] { transform: none; }
+}
+
+/* ===========================================
+   7. Speaker notes: N key, hidden by default
+   =========================================== */
+aside.notes { display: none; }
+#notesPanel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9997;
+    max-height: 42vh; overflow: auto;
+    background: var(--paper); border-top: 2px solid var(--ink);
+    box-shadow: 0 -8px 24px var(--shadow);
+    padding: clamp(.7rem, 1.6vh, 1.2rem) var(--slide-padding);
+}
+#notesPanel[hidden] { display: none; }
+#notesPanel .meta {
+    display: flex; gap: 1.4em; flex-wrap: wrap;
+    font-family: var(--font-mono); font-size: var(--small-size); color: var(--mut);
+    margin-bottom: .5em;
+}
+#notesPanel .meta b { color: var(--acc); font-weight: 600; }
+#notesPanel .body { font-size: clamp(1rem, 1.25vw, 1.6rem); line-height: 1.65; }
+#notesPanel .body p + p { margin-top: .35em; }
+#notesPanel .body .st { font-family: var(--font-mono); color: var(--acc); font-weight: 600; margin-right: .4em; }
+
+/* Progress bar, nav dots, key hint */
+.progress-bar {
+    position: fixed; top: 0; left: 0; height: 4px; width: 100%;
+    background: var(--acc); z-index: 9999;
+    transform: scaleX(0); transform-origin: left center; transition: transform .2s linear;
+}
+.nav-dots {
+    position: fixed; right: clamp(.6rem, 1.4vw, 1.4rem); top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: .55rem; z-index: 9998;
+}
+.nav-dots button {
+    width: 9px; height: 9px; padding: 0; border: 1.5px solid var(--ink);
+    background: transparent; border-radius: 50%; cursor: pointer;
+}
+.nav-dots button.active { background: var(--acc); border-color: var(--acc); transform: scale(1.35); }
+.keyboard-hint {
+    position: fixed; left: clamp(.6rem,1.4vw,1.4rem); bottom: clamp(.4rem,1vh,.8rem);
+    font-family: var(--font-mono); font-size: clamp(.55rem,1vh,.72rem); color: var(--mut);
+    z-index: 9998; opacity: .75; animation: hint-out .5s 5s forwards;
+}
+@keyframes hint-out { to { opacity: 0; visibility: hidden; } }
+
+/* ===========================================
+   8. In-browser edit mode: E key or the top-left corner
+   =========================================== */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; }
+.edit-toggle {
+    position: fixed; top: 14px; left: 14px;
+    width: 42px; height: 42px; border: 2px solid var(--ink);
+    background: var(--paper); border-radius: 50%; cursor: pointer;
+    font-size: 17px; line-height: 1;
+    opacity: 0; pointer-events: none; transition: opacity .3s ease;
+    z-index: 10001;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--acc); border-color: var(--acc); }
+.edit-banner {
+    position: fixed; top: 4px; left: 0; right: 0;
+    background: var(--ink); color: var(--paper);
+    font-family: var(--font-mono); font-size: clamp(.6rem,1.1vh,.78rem);
+    padding: .45em 1em; text-align: center;
+    transform: translateY(-120%); transition: transform .3s var(--ease);
+    z-index: 10000;
+}
+body.edit-active .edit-banner { transform: none; }
+/* While editing, show every step so hidden text can be edited too */
+body.edit-active [data-step] { opacity: 1; visibility: visible; transform: none; }
+body.edit-active [contenteditable] { outline: 1px dashed var(--acc); outline-offset: 3px; }
+body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); background: var(--edit-bg); }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots" aria-label="슬라이드 이동"></nav>
+<div class="keyboard-hint">→ 다음 단계 · ← 이전 · N 발표자 노트 · E 편집 · Ctrl+S 저장</div>
+
+<div class="edit-hotzone" aria-hidden="true"></div>
+<button class="edit-toggle" id="editToggle" title="편집 모드 (E)" aria-label="편집 모드 켜기">✏️</button>
+<div class="edit-banner" id="editBanner">편집 모드 · 글자를 눌러 고치세요 · N 노트도 고칠 수 있어요 · Esc 커서 빼기 · Ctrl+S 파일 저장 · E 끄기</div>
+
+<!-- ============================================================
+     01 · Title
+     ============================================================ -->
+<section class="slide" id="s1">
+    <div class="head"><span>주제 · 한 단어</span><span class="num"></span></div>
+    <div class="slide-content">
+        <span class="kicker">Krafton Jungle · Week NN</span>
+        <h1>발표 제목을 <em>한 줄</em>로</h1>
+        <p class="ask">이 발표가 답할 질문 한 문장</p>
+    </div>
+    <div class="foot"><span>저장소 · 파일 경로</span><span>2 MIN</span></div>
+    <aside class="notes" data-sec="15">
+        <p>무엇을 하다가 어떤 문제를 만났는지 한두 문장으로 연다.</p>
+    </aside>
+</section>
+
+<!-- ============================================================
+     02 · Code panels, two steps
+     ============================================================ -->
+<section class="slide" id="s2">
+    <div class="head"><span>증거 · 도구 이름</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h2>이 장에서 보여 줄 <em>한 가지</em></h2>
+        <div class="panels">
+            <div class="panel" data-step="1">
+                <div class="cap"><span>파일 · 함수</span><span class="side">코드</span></div>
+<pre>/* 문제가 된 코드 몇 줄 */
+<span class="hl">강조할 줄</span>
+<span class="c-com">/* 설명 주석 */</span></pre>
+            </div>
+            <div class="panel accent" data-step="2">
+                <div class="cap"><span>도구 · 명령</span><span class="side">실제 기록</span></div>
+<pre class="wrap">실행 결과나 로그를 그대로 붙인다
+<span class="c-hit">눈여겨볼 한 줄</span>
+<span class="c-dim">   ⋮   생략</span></pre>
+            </div>
+        </div>
+    </div>
+    <div class="foot"><span>저장소 · 파일 경로</span><span>근거</span></div>
+    <aside class="notes" data-sec="45">
+        <p><span class="st">▸1</span>왼쪽 코드에서 어디를 봐야 하는지 짚는다.</p>
+        <p><span class="st">▸2</span>오른쪽 기록이 그 코드의 결과임을 연결한다.</p>
+    </aside>
+</section>
+
+<!-- ============================================================
+     03 · Takeaway
+     ============================================================ -->
+<section class="slide" id="s3">
+    <div class="head"><span>정리 · 배운 것</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h2>원인을 한 문장으로</h2>
+        <p class="punch">다음에 같은 상황을 만나면 <b>무엇을 먼저 볼지</b> 한 줄</p>
+        <p class="hint">덧붙일 근거나 조건 한 줄</p>
+    </div>
+    <div class="foot"><span>저장소 · 파일 경로</span><span>배운 것</span></div>
+    <aside class="notes" data-sec="40">
+        <p>원인과 고친 방법을 말하고, 다음에 적용할 습관 하나로 맺는다.</p>
+    </aside>
+</section>
+
+<!-- ============================================================
+     04 · Closing
+     ============================================================ -->
+<section class="slide closing" id="s4">
+    <div class="head"><span>마무리</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h1>마지막으로 남길 문장</h1>
+        <h1>그 문장의 다음 행동</h1>
+        <div class="rule"></div>
+        <p class="thanks">질문 받을게요 · 감사합니다</p>
+    </div>
+    <div class="foot"><span>YYYY-MM · WEEK NN</span><span>주제</span></div>
+    <aside class="notes" data-sec="20">
+        <p>마지막 문장을 한 번 더 말하고 질문을 받는다.</p>
+    </aside>
+</section>
+
+<div id="notesPanel" hidden aria-live="polite">
+    <div class="meta"><span id="nSlide"></span><span>목표 <b id="nSec"></b>초</span><span id="nStep"></span><span id="nTotal"></span></div>
+    <div class="body" id="nBody"></div>
+</div>
+
+<script>
+/* ===========================================
+   Deck controller: steps, hash, notes
+   =========================================== */
+const slides = Array.from(document.querySelectorAll('.slide'));
+const total = slides.length;
+
+/* ===========================================
+   In-browser editor: edits autosave to localStorage,
+   Ctrl+S downloads the deck as an HTML file
+   =========================================== */
+/* One key per deck file, so two decks on the same origin do not collide */
+const STORE = 'jungle-deck:' + location.pathname;
+const EDITABLE = '.slide > .head span:not(.num), .slide > .foot span, '
+               + '.slide-content :is(h1, h2, .kicker, p, th, td, .cap span)';
+
+/* Strip edit traces (contenteditable, step state) */
+function scrub(root) {
+    root.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
+    root.querySelectorAll('.on').forEach(e => e.classList.remove('on'));
+    root.querySelectorAll('[class=""]').forEach(e => e.removeAttribute('class'));
+    return root;
+}
+const slideHTML = () => slides.map(s => scrub(s.cloneNode(true)).innerHTML);
+
+/* If the file itself changed, do not restore an older autosave */
+const signature = (() => {
+    const src = slideHTML().join('\u0000');
+    let h = 5381;
+    for (let i = 0; i < src.length; i++) h = ((h * 33) ^ src.charCodeAt(i)) >>> 0;
+    return src.length + '-' + h.toString(36);
+})();
+
+function saveLocal() {
+    try { localStorage.setItem(STORE, JSON.stringify({ sig: signature, data: slideHTML() })); } catch (e) {}
+}
+(function restoreLocal() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+        if (!saved) return;
+        if (saved.sig !== signature) {
+            /* The file changed. Move the old autosave aside instead of deleting it */
+            localStorage.setItem(STORE + ':stale', JSON.stringify(saved));
+            localStorage.removeItem(STORE);
+            return;
+        }
+        slides.forEach((s, i) => { if (saved.data[i]) s.innerHTML = saved.data[i]; });
+    } catch (e) {}
+})();
+const pad = n => String(n).padStart(2, '0');
+let cur = 0;
+
+/* Steps on a slide = the largest data-step in it */
+const maxStep = s => Math.max(0, ...Array.from(s.querySelectorAll('[data-step]'), e => Number(e.dataset.step)));
+const shown = s => Number(s.dataset.shown || 0);
+
+function setShown(s, n) {
+    s.dataset.shown = n;
+    s.querySelectorAll('[data-step]').forEach(e => e.classList.toggle('on', Number(e.dataset.step) <= n));
+    renderNotes();
+}
+
+function show(i, n) {
+    i = Math.max(0, Math.min(total - 1, i));
+    if (i !== cur) {
+        const out = slides[cur];
+        slides.forEach(s => s.classList.remove('leaving'));
+        out.classList.add('leaving');
+        clearTimeout(show.t);
+        show.t = setTimeout(() => out.classList.remove('leaving'), 400);   /* after the new slide's .35s fade */
+    }
+    cur = i;
+    slides.forEach((s, k) => {
+        s.classList.toggle('active', k === i);
+        s.setAttribute('aria-hidden', k === i ? 'false' : 'true');
+    });
+    setShown(slides[i], n);
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+    document.getElementById('progressBar').style.transform = 'scaleX(' + (i / Math.max(1, total - 1)) + ')';
+    Array.from(document.getElementById('navDots').children).forEach((b, k) => b.classList.toggle('active', k === i));
+}
+
+function next() {
+    const s = slides[cur];
+    if (shown(s) < maxStep(s)) setShown(s, shown(s) + 1);
+    else if (cur < total - 1) show(cur + 1, 0);
+}
+function prev() {
+    const s = slides[cur];
+    if (shown(s) > 0) setShown(s, shown(s) - 1);
+    else if (cur > 0) show(cur - 1, maxStep(slides[cur - 1]));   /* going back shows that slide fully */
+}
+
+/* Speaker notes */
+const notesPanel = document.getElementById('notesPanel');
+const totalSec = slides.reduce((a, s) => a + Number((s.querySelector('aside.notes') || {}).dataset?.sec || 0), 0);
+function renderNotes() {
+    const s = slides[cur];
+    const a = s.querySelector('aside.notes');
+    document.getElementById('nSlide').textContent = pad(cur + 1) + ' / ' + pad(total);
+    document.getElementById('nSec').textContent = a ? a.dataset.sec : '–';
+    document.getElementById('nStep').textContent = maxStep(s) ? '단계 ' + shown(s) + ' / ' + maxStep(s) : '단계 없음';
+    document.getElementById('nTotal').textContent = '전체 ' + totalSec + '초';
+    document.getElementById('nBody').innerHTML = a ? a.innerHTML : '';
+}
+
+/* Slide numbers and nav dots */
+slides.forEach((s, i) => {
+    const num = s.querySelector('.head .num');
+    if (num) num.textContent = pad(i + 1) + ' / ' + pad(total);
+    const b = document.createElement('button');
+    b.setAttribute('aria-label', (i + 1) + '번 슬라이드로');
+    b.addEventListener('click', () => show(i, 0));
+    document.getElementById('navDots').appendChild(b);
+});
+
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') { e.preventDefault(); exportFile(); return; }
+    if (e.target.isContentEditable) {
+        if (e.key === 'Escape') e.target.blur();   /* leave the caret so arrows navigate again */
+        return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    /* e.code, not e.key, so E and N work with a Korean IME on */
+    if (e.code === 'KeyE') { toggleEdit(); return; }
+    if (e.code === 'KeyN') { notesPanel.hidden = !notesPanel.hidden; return; }
+    switch (e.key) {
+        case 'ArrowRight': case 'ArrowDown': case 'PageDown': case ' ':
+            e.preventDefault(); next(); break;
+        case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+            e.preventDefault(); prev(); break;
+        case 'Home': e.preventDefault(); show(0, 0); break;
+        case 'End':  e.preventDefault(); show(total - 1, 0); break;
+    }
+});
+
+let x0 = null;
+document.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = x0 - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) dx > 0 ? next() : prev();
+    x0 = null;
+}, { passive: true });
+
+/* Edit mode */
+let editing = false;
+const editToggle = document.getElementById('editToggle');
+const nBody = document.getElementById('nBody');
+
+function toggleEdit() {
+    editing = !editing;
+    document.body.classList.toggle('edit-active', editing);
+    editToggle.classList.toggle('active', editing);
+    editToggle.setAttribute('aria-label', editing ? '편집 모드 끄기' : '편집 모드 켜기');
+    const els = [...document.querySelectorAll(EDITABLE), nBody];
+    els.forEach(el => editing ? el.setAttribute('contenteditable', 'true') : el.removeAttribute('contenteditable'));
+    if (!editing && document.activeElement) document.activeElement.blur();
+}
+
+/* Any edit is saved at once */
+document.addEventListener('input', e => {
+    if (e.target === nBody) {
+        const a = slides[cur].querySelector('aside.notes');   /* notes panel writes back to its aside */
+        if (a) a.innerHTML = nBody.innerHTML;
+    }
+    saveLocal();
+});
+/* Paste plain text only, so outside formatting does not come in */
+document.addEventListener('paste', e => {
+    if (!e.target.closest || !e.target.closest('[contenteditable]')) return;
+    e.preventDefault();
+    document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+});
+
+function exportFile() {
+    const doc = document.documentElement.cloneNode(true);
+    scrub(doc);
+    doc.querySelector('body').removeAttribute('class');
+    doc.querySelectorAll('.slide').forEach(s => {
+        s.classList.remove('active', 'leaving'); s.removeAttribute('aria-hidden'); s.removeAttribute('data-shown');
+    });
+    doc.querySelector('#navDots').innerHTML = '';          /* the script rebuilds them */
+    doc.querySelector('#progressBar').removeAttribute('style');
+    doc.querySelector('#notesPanel').setAttribute('hidden', '');
+    doc.querySelectorAll('#notesPanel span[id], #notesPanel b[id], #nBody').forEach(e => e.textContent = '');
+    doc.querySelector('#editToggle').className = 'edit-toggle';
+    doc.querySelector('#editToggle').setAttribute('aria-label', '편집 모드 켜기');
+    scrub(doc);
+    const blob = new Blob(['<!DOCTYPE html>\n' + doc.outerHTML], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    /* Same file name as the open deck, so the export can replace it */
+    a.download = decodeURIComponent(location.pathname.split('/').pop()) || 'deck.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* Edit button: appears when the mouse reaches the top-left corner */
+let hideTimer = null;
+const hotzone = document.querySelector('.edit-hotzone');
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimer); editToggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', () => {
+    hideTimer = setTimeout(() => { if (!editing) editToggle.classList.remove('show'); }, 400);
+});
+editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+editToggle.addEventListener('click', toggleEdit);
+
+/* #3 opens slide 3 */
+const fromHash = () => {
+    const n = parseInt(location.hash.slice(1), 10);
+    return Number.isFinite(n) ? n - 1 : 0;
+};
+window.addEventListener('hashchange', () => { if (fromHash() !== cur) show(fromHash(), 0); });
+show(fromHash(), 0);
+</script>
+</body>
+</html>
