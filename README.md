@@ -19,11 +19,17 @@ installed. Without it, jungle-deck uses the copies in `vendor/frontend-slides/`.
 
 1. Open Claude Code in your week repository.
 2. Say "발표 덱" or type `/jungle-deck`.
-3. Answer a few setup questions (display name, week-repo root, publish
-   target). The skill writes the answers to `jungle-deck.local.md` in the
-   skill directory. This file is gitignored.
-4. The `grill` phase starts. It asks you to settle the conclusion, the story,
-   and one thesis sentence per slide before any slide is built.
+3. Answer five setup questions: display name, week-repo root, GitHub Pages
+   repo, DESIGN.md, and accent. Answer "기본값" to take every default. The
+   skill writes the answers to `jungle-deck.local.md` in the skill
+   directory. This file is gitignored. Without a Pages repo, the skill
+   stops at a finished local HTML file.
+4. The skill makes a new deck folder with a `BRIEF.md`, and the `grill`
+   phase starts. It asks you to settle the conclusion, the story, and one
+   thesis sentence per slide before any slide is built.
+
+Later calls read `BRIEF.md` and resume at its phase. Say
+"jungle-deck 이어서" to continue a deck, or "덱 게시" to publish it.
 
 ## Credits
 
