@@ -58,8 +58,11 @@ class PublishReferenceTest(unittest.TestCase):
 
     def test_week_repo_commit_set_and_gitignore(self):
         body = step(self.text, "Commit in the week repo")
+        # The lines are added at build time (reference/build.md); here only checked.
+        self.assertRegex(flat(body), r"(?i)(check|verify) that `\.gitignore`")
+        self.assertNotRegex(flat(body), r"(?i)add each of these lines")
         for line in ["_backup/", "previews/", ".impeccable/"]:
-            self.assertRegex(body, rf"(?m)^\s*{re.escape(line)}$", f"gitignore '{line}'")
+            self.assertIn(f"`{line}`", body, f"gitignore '{line}'")
         for item in ["BRIEF.md", "evidence/", ".html"]:
             self.assertIn(item, body, f"commit set lacks '{item}'")
 

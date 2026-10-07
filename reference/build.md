@@ -33,10 +33,19 @@ For every source:
 ## Start from the stage template
 
 1. Copy `templates/stage.html` to `<week repo>/study/<slug>/<slug>.html`. The slug is the `slug` in the `BRIEF.md` front matter.
-2. Do not write a deck from zero. The template holds the stage runtime: one fixed slide at a time, the `#N` hash, `data-step` reveals, speaker notes on `N`, edit mode on `E`, and `Ctrl+S` export.
-3. Keep the runtime script and the edit-mode CSS as they are.
-4. Keep one `<section class="slide" id="sN">` per slide. Keep each section id stable after the first draft. `scripts/pull_edits.py` merges the student's edits by section id. A changed id loses those edits.
-5. Write the section ids into the `Slide theses` table of `BRIEF.md` (column `Section id`).
+2. Open the week repo's `.gitignore` (create it if it is missing). Add each of these lines that is not there yet (D13):
+
+   ```
+   _backup/
+   previews/
+   .impeccable/
+   ```
+
+   Do this now, before revise. In revise, `scripts/pull_edits.py` writes backups into `_backup/` next to the deck. Commit this `.gitignore` change together with the deck in publish.
+3. Do not write a deck from zero. The template holds the stage runtime: one fixed slide at a time, the `#N` hash, `data-step` reveals, speaker notes on `N`, edit mode on `E`, and `Ctrl+S` export.
+4. Keep the runtime script and the edit-mode CSS as they are.
+5. Keep one `<section class="slide" id="sN">` per slide. Keep each section id stable after the first draft. `scripts/pull_edits.py` merges the student's edits by section id. A changed id loses those edits.
+6. Write the section ids into the `Slide theses` table of `BRIEF.md` (column `Section id`).
 
 The template has four example slides: title, code panels, takeaway, closing. Copy the slide shape you need, one section per row of the `Slide theses` table. Delete the example slides you do not use.
 

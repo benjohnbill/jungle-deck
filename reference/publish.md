@@ -37,17 +37,14 @@ the week number, and `<deck-slug>` is `slug` from `BRIEF.md`. Run
 
 ### 1. Commit in the week repo
 
-1. Open `.gitignore` at the week repo root. Add each of these lines that is
-   not there yet (D13):
-
-   ```
-   _backup/
-   previews/
-   .impeccable/
-   ```
-
+1. Check that `.gitignore` at the week repo root has the lines `_backup/`,
+   `previews/`, and `.impeccable/` (D13). Build adds them
+   (`reference/build.md`); here you only check them. If a line is missing,
+   stop and tell the student which one. Add it only when the student
+   agrees, as `reference/build.md` says.
 2. Stage the commit set by name: the deck HTML, `BRIEF.md`, the
-   `evidence/` folder of this deck, and `.gitignore` if you changed it.
+   `evidence/` folder of this deck, and `.gitignore` if it has changes
+   that are not committed.
 
    ```
    git add .gitignore study/<deck-slug>/<deck-slug>.html study/<deck-slug>/BRIEF.md study/<deck-slug>/evidence/
