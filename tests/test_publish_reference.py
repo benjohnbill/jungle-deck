@@ -143,7 +143,7 @@ class PublishReferenceTest(unittest.TestCase):
         self.assertRegex(body, r"(?i)only when the student confirms")
 
     def test_cli_lines_match_publish_py_help(self):
-        lines = re.findall(r"(?m)^\s*python3 scripts/publish\.py (\w+)(.*)$", self.text)
+        lines = re.findall(r"(?m)^\s*<python_cmd> scripts/publish\.py (\w+)(.*)$", self.text)
         self.assertEqual({c for c, _ in lines}, {"copy", "verify"}, "copy and verify lines")
         for command, rest in lines:
             help_text = subprocess.run(

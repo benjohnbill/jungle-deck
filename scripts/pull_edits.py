@@ -11,6 +11,9 @@ Dry-run by default: print a unified diff per changed section and a
 summary line. --write needs the --export that the dry-run read. It copies
 the deck to _backup/ next to it, then atomically replaces only the changed
 sections and leaves every byte outside them (head, styles, scripts) as it was.
+
+The downloads folder: --downloads, else `downloads_dir` in
+jungle-deck.local.md, else the folder that downloads_dir.py detects.
 """
 
 import argparse
@@ -23,6 +26,12 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import publish  # noqa: E402  (load_settings: the same local.md parser)
+from downloads_dir import detect_here as detect_downloads  # noqa: E402
+
+SKILL_ROOT = Path(__file__).resolve().parent.parent
 
 # Comments are matched first so a <section> written inside one (the
 # template's header documents the format that way) is skipped.
@@ -64,21 +73,26 @@ def same(a, b):
     return norm(a) == norm(b)
 
 
-WIN_USERS = Path("/mnt/c/Users")
-
-
-def default_downloads():
-    """The Windows downloads folder seen from WSL, else ~/Downloads. On WSL
-    the Windows user name can differ from $USER: say so, do not guess further."""
-    user = os.environ.get("USER", "")
-    win = WIN_USERS / user / "Downloads"
-    if user and win.is_dir():
-        return win
-    if WIN_USERS.is_dir():
-        print(f"pull_edits: {win} not found; using ~/Downloads. "
-              "Pass --downloads <Windows downloads folder> if the export is there.",
-              file=sys.stderr)
-    return Path.home() / "Downloads"
+def resolve_downloads(flag, local):
+    """--downloads, else downloads_dir from local.md, else the detected
+    folder with a one-line hint. A missing local.md means no downloads_dir."""
+    if flag:
+        return flag
+    try:
+        setting = publish.load_settings(local).get("downloads_dir", "")
+    except publish.Fail as e:
+        if Path(local).exists():
+            raise Fail(str(e))
+        setting = ""
+    if setting:
+        return Path(setting).expanduser()
+    found = detect_downloads()
+    if found is None:
+        raise Fail(f"downloads_dir is not set in {local} and no downloads folder was "
+                   "detected; set downloads_dir or pass --downloads <dir>")
+    print(f"pull_edits: downloads_dir is not set in {local}; using {found} (detected). "
+          "Pass --downloads <dir> if the export is elsewhere.", file=sys.stderr)
+    return found
 
 
 def find_export(deck, downloads):
@@ -165,7 +179,7 @@ def merge(deck, export, write):
     if not write:
         if edits:
             print("dry-run: nothing written. To write this export, run:")
-            print("  " + shlex.join(["python3", str(Path(__file__).resolve()),
+            print("  " + shlex.join([sys.executable, str(Path(__file__).resolve()),
                                      "--deck", str(deck.resolve()),
                                      "--export", str(export.resolve()), "--write"]))
         return
@@ -184,18 +198,20 @@ def main(argv=None):
     src = ap.add_mutually_exclusive_group()
     src.add_argument("--export", type=Path, help="the exported copy to merge")
     src.add_argument("--downloads", type=Path,
-                     help="where to look for the newest export (default: "
-                          "/mnt/c/Users/$USER/Downloads if present, else ~/Downloads)")
+                     help="where to look for the newest export (default: downloads_dir "
+                          "from --local, else the detected downloads folder)")
     ap.add_argument("--write", action="store_true",
                     help="apply the changed sections to the deck (default: dry-run); "
                          "needs --export")
+    ap.add_argument("--local", type=Path, default=SKILL_ROOT / "jungle-deck.local.md",
+                    help="settings file (default: jungle-deck.local.md in the skill root)")
     args = ap.parse_args(argv)
     if args.write and not args.export:
         print("pull_edits: --write needs --export FILE (the export you reviewed in the dry-run)",
               file=sys.stderr)
         return 2
     try:
-        export = args.export or find_export(args.deck, args.downloads or default_downloads())
+        export = args.export or find_export(args.deck, resolve_downloads(args.downloads, args.local))
         merge(args.deck, export, args.write)
     except (Fail, OSError) as e:
         print(f"pull_edits: {e}", file=sys.stderr)

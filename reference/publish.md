@@ -62,7 +62,7 @@ of the local deck HTML, do not copy, do not push, and do not make a card
 ### 2. Copy the deck
 
 ```
-python3 scripts/publish.py copy --deck <deck> --week <N>
+<python_cmd> scripts/publish.py copy --deck <deck> --week <N>
 ```
 
 The script copies the deck to `<pages_repo>/study/weekNN/<deck-slug>.html`
@@ -119,7 +119,7 @@ and stop. Do not force-push.
 ### 7. Verify the live deck
 
 ```
-python3 scripts/publish.py verify --deck <deck> --week <N>
+<python_cmd> scripts/publish.py verify --deck <deck> --week <N>
 ```
 
 The script polls the deck URL until it returns HTTP 200 and the live bytes

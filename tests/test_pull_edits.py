@@ -11,6 +11,7 @@ import io
 import os
 import re
 import shlex
+import sys
 import tempfile
 import unittest
 import unittest.mock
@@ -147,31 +148,51 @@ class FindExport(Workspace):
         self.assertIn("sample-deck (1).html", out)
         self.assertIn("+        <h1>가장 새 사본</h1>", out)
 
-    def test_wsl_without_the_user_folder_hints_at_downloads_flag(self):
-        users = self.tmp / "Users"
-        (users / "someone-else" / "Downloads").mkdir(parents=True)
-        self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")))
-        env = {"USER": "student", "HOME": str(self.tmp)}
-        with unittest.mock.patch.object(pull_edits, "WIN_USERS", users), \
-                unittest.mock.patch.dict(os.environ, env):
-            code, out, err = run("--deck", self.deck)
-        self.assertEqual(code, 0)
-        self.assertEqual(len(err.strip().splitlines()), 1)
-        self.assertIn("--downloads", err)
-        self.assertIn(str(users / "student" / "Downloads"), err)
-        self.assertIn(str(self.downloads), out)
+    def local(self, downloads_dir):
+        path = self.tmp / "jungle-deck.local.md"
+        path.write_text(f'---\ndisplay_name: ""\ndownloads_dir: "{downloads_dir}"\n---\n',
+                        encoding="utf-8")
+        return path
 
-    def test_wsl_user_folder_is_used_without_a_hint(self):
-        users = self.tmp / "Users"
-        win = users / "student" / "Downloads"
-        win.mkdir(parents=True)
-        (win / self.deck.name).write_text(export_of(STAGE), encoding="utf-8")
-        with unittest.mock.patch.object(pull_edits, "WIN_USERS", users), \
-                unittest.mock.patch.dict(os.environ, {"USER": "student"}):
-            code, out, err = run("--deck", self.deck)
+    def test_downloads_dir_from_local_md_is_used_without_a_hint(self):
+        self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")))
+        with unittest.mock.patch.object(pull_edits, "detect_downloads") as detect:
+            code, out, err = run("--deck", self.deck, "--local", self.local(self.downloads))
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
-        self.assertIn(str(win), out)
+        self.assertIn(str(self.downloads), out)
+        detect.assert_not_called()
+
+    def test_downloads_flag_beats_local_md(self):
+        self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")))
+        local = self.local(self.tmp / "elsewhere")
+        code, out, err = run("--deck", self.deck, "--local", local, "--downloads", self.downloads)
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn(str(self.downloads), out)
+
+    def test_without_downloads_dir_the_detected_folder_is_used_with_one_hint(self):
+        self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")))
+        with unittest.mock.patch.object(pull_edits, "detect_downloads", return_value=self.downloads):
+            code, out, err = run("--deck", self.deck, "--local", self.local(""))
+        self.assertEqual(code, 0)
+        self.assertEqual(len(err.strip().splitlines()), 1)
+        self.assertIn("downloads_dir", err)
+        self.assertIn("--downloads", err)
+        self.assertIn(str(self.downloads), out)
+
+    def test_missing_local_md_is_the_same_as_no_downloads_dir(self):
+        self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")))
+        with unittest.mock.patch.object(pull_edits, "detect_downloads", return_value=self.downloads):
+            code, out, err = run("--deck", self.deck, "--local", self.tmp / "absent.md")
+        self.assertEqual(code, 0)
+        self.assertIn("downloads_dir", err)
+
+    def test_nothing_detected_exits_non_zero_and_names_the_key(self):
+        with unittest.mock.patch.object(pull_edits, "detect_downloads", return_value=None):
+            code, _, err = run("--deck", self.deck, "--local", self.local(""))
+        self.assertNotEqual(code, 0)
+        self.assertIn("downloads_dir", err)
+        self.assertIn("--downloads", err)
 
     def test_no_copy_in_downloads_exits_non_zero(self):
         self.export(export_of(STAGE), "other-deck.html")
@@ -196,7 +217,7 @@ class WriteNeedsExport(Workspace):
         line = [l for l in out.splitlines() if "--write" in l]
         self.assertEqual(len(line), 1, out)
         argv = shlex.split(line[0])
-        self.assertEqual(argv[0], "python3")
+        self.assertEqual(argv[0], sys.executable)
         self.assertEqual(argv[argv.index("--export") + 1], str(exp.resolve()))
         # Running the printed command writes exactly the reviewed export.
         code, _, _ = run(*argv[2:])

@@ -164,7 +164,7 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
         usage = help_text.split("\n\n")[0]
         # Optional groups may wrap across lines; drop them, keep the rest.
         required = re.findall(r"--[\w-]+", re.sub(r"\[[^\]]*\]", "", usage, flags=re.S))
-        lines = re.findall(r"(?m)^\s*python3 \S*scripts/pull_edits\.py(.*)$", self.text)
+        lines = re.findall(r"(?m)^\s*<python_cmd> \S*scripts/pull_edits\.py(.*)$", self.text)
         self.assertGreaterEqual(len(lines), 2, "need a dry-run line and a --write line")
         self.assertTrue(any("--write" not in l for l in lines), "no dry-run line")
         self.assertTrue(any("--write" in l for l in lines), "no --write line")

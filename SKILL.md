@@ -17,11 +17,14 @@ file). `BRIEF.md` is the one exception: it lives in the deck folder,
 ### 1. Load the personal settings
 
 Read `jungle-deck.local.md` in the skill directory. When
-`jungle-deck.local.md` is missing, this is the first run: ask the
-first-run questions in `reference/local-template.md`, then write the file
-from its template. Do this before step 2.
+`jungle-deck.local.md` is missing, this is the first run: run the Python
+check, then ask the first-run questions, both in
+`reference/local-template.md`, then write the file from its template.
+Run the Python check also when `python_cmd` is empty or fails. Do this
+before step 2.
 
-Done when `jungle-deck.local.md` exists and you have read it.
+Done when `jungle-deck.local.md` exists, you have read it, and
+`python_cmd` holds a working command.
 
 ### 2. Find the deck
 

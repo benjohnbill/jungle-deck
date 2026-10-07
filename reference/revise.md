@@ -29,10 +29,10 @@ Run these steps in order. One pass is one round.
 3. **Dry-run.** Run `pull_edits.py` as a dry-run first, from the skill directory:
 
    ```
-   python3 scripts/pull_edits.py --deck <week repo>/study/<slug>/<slug>.html
+   <python_cmd> scripts/pull_edits.py --deck <week repo>/study/<slug>/<slug>.html
    ```
 
-   The script finds the newest export of the deck in the downloads folder. If the export is in another place, give it with `--export <file>`, or give the folder with `--downloads <dir>`. The script prints a diff for each changed section, one summary line, and the exact `--write` command with the `--export` path of the file it read. It writes nothing.
+   The script finds the newest export of the deck in the downloads folder (`downloads_dir` in local.md). If the export is in another place, give it with `--export <file>`, or give the folder with `--downloads <dir>`. The script prints a diff for each changed section, one summary line, and the exact `--write` command with the `--export` path of the file it read. It writes nothing.
 
    Show the student the summary line and the changed section ids. Read the diff yourself. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Ask the student to agree to the merge. Wait for the answer.
 
@@ -43,7 +43,7 @@ Run these steps in order. One pass is one round.
 5. **Write.** Run the `--write` command that the dry-run printed, only after the student agrees:
 
    ```
-   python3 scripts/pull_edits.py --deck <week repo>/study/<slug>/<slug>.html --export <export file from the dry-run> --write
+   <python_cmd> scripts/pull_edits.py --deck <week repo>/study/<slug>/<slug>.html --export <export file from the dry-run> --write
    ```
 
    `--write` needs `--export`. Use the file that the dry-run read, so the export that the student reviewed is the export that is written. Without `--export`, the script exits non-zero and writes nothing. The script copies the deck to `_backup/` next to it, then replaces only the changed sections. It does not change the head, the styles, or the scripts.
@@ -64,7 +64,8 @@ Then repeat from step 1.
 | Output | Meaning | Action |
 |---|---|---|
 | `--write needs --export FILE` | The write ran without the export path. | Run the `--write` command that the dry-run printed. |
-| `<dir> not found; using ~/Downloads` | On WSL, the Windows user name is not `$USER`. | Ask the student for the Windows downloads folder. Pass it with `--downloads`. |
+| `downloads_dir is not set ...; using <dir> (detected)` | `downloads_dir` is not set in local.md. The script used the detected folder. | If the export is not there, ask the student for the downloads folder and write it to `downloads_dir`. |
+| `downloads_dir is not set ... and no downloads folder was detected` | On WSL, the Windows profile was not found. | Ask the student for the downloads folder. Write it to `downloads_dir`, or pass it with `--downloads`. |
 | `no <slug>*.html export in <dir>` | No export with the deck's file name in that folder. | Ask the student where the browser saved the file. Pass it with `--export`. |
 | `no matching sections` | The export is not this deck, or the section ids changed. | Check the file name. Compare the section ids. Do not write. |
 | `0 changed` | The export matches the source. | Nothing to merge. Ask the student whether they exported after the edit. |
