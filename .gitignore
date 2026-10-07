@@ -2,3 +2,5 @@ jungle-deck.local.md
 _backup/
 previews/
 .impeccable/
+__pycache__/
+.claude/worktrees/
