@@ -17,7 +17,7 @@ The agent owns the merge, the layout, and the evidence.
 
 - Do not overwrite the student's wording. After a merge, the student's text is the source of truth. Change layout, size, steps, and evidence around it. If a layout fix needs other words, ask the student.
 - Do not edit the source deck while the student has edits in the browser that they did not export. The deck autosaves edits in the browser. When the source file changes, the deck moves that autosave aside and shows the file. Ask the student to export first.
-- `scripts/pull_edits.py` has no backup of its own. Before every write, commit the deck or copy it (step 4 below).
+- Before every write, the script copies the deck to `_backup/<slug>.<YYYYmmdd-HHMMSS>.html` next to the deck, then replaces the deck atomically. `_backup/` is in the week repo's `.gitignore` since build (`reference/build.md`, D13). Also commit the deck before every write (step 4). That commit is the second line of defence, not the only one.
 - Keep every `<section id>` stable. The merge matches sections by id. A new section in the export is not added; a section missing from the export is kept as is.
 
 ## The loop
@@ -32,23 +32,21 @@ Run these steps in order. One pass is one round.
    python3 scripts/pull_edits.py --deck <week repo>/study/<slug>/<slug>.html
    ```
 
-   The script finds the newest export of the deck in the downloads folder. If the export is in another place, give it with `--export <file>`, or give the folder with `--downloads <dir>`. The script prints a diff for each changed section and one summary line. It writes nothing.
+   The script finds the newest export of the deck in the downloads folder. If the export is in another place, give it with `--export <file>`, or give the folder with `--downloads <dir>`. The script prints a diff for each changed section, one summary line, and the exact `--write` command with the `--export` path of the file it read. It writes nothing.
 
    Show the student the summary line and the changed section ids. Read the diff yourself. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Ask the student to agree to the merge. Wait for the answer.
 
-4. **Back up the deck.** Before the write, commit the deck or copy the deck:
-   - Commit: in the week repo, stage only the deck file and commit it. Example: `git -C <week repo> add study/<slug>/<slug>.html`, then `git -C <week repo> commit -m "Deck before revise round N"`.
-   - Copy: `cp <deck> <week repo>/study/<slug>/_backup/<slug>-round-N.html`. `_backup/` is gitignored (D13).
+4. **Commit the deck.** Before the write, commit the deck in the week repo. Stage only the deck file. Example: `git -C <week repo> add study/<slug>/<slug>.html`, then `git -C <week repo> commit -m "Deck before revise round N"`. The script also makes its own backup in step 5. This commit is the second line of defence.
 
-   Do not go to step 5 without one of the two.
+   If the student does not want a commit now, the script backup is the only copy. Tell the student so before step 5.
 
-5. **Write.** Run the same command with `--write`, only after the student agrees:
+5. **Write.** Run the `--write` command that the dry-run printed, only after the student agrees:
 
    ```
-   python3 scripts/pull_edits.py --deck <week repo>/study/<slug>/<slug>.html --write
+   python3 scripts/pull_edits.py --deck <week repo>/study/<slug>/<slug>.html --export <export file from the dry-run> --write
    ```
 
-   Give the same `--export` or `--downloads` value as in the dry-run. The script replaces only the changed sections. It does not change the head, the styles, or the scripts.
+   `--write` needs `--export`. Use the file that the dry-run read, so the export that the student reviewed is the export that is written. Without `--export`, the script exits non-zero and writes nothing. The script copies the deck to `_backup/` next to it, then replaces only the changed sections. It does not change the head, the styles, or the scripts.
 
 6. **Adjust.** Read the merged deck. Fix the layout and the evidence to match the student's edits, without changing their words:
    - A longer thesis or note: change the layout or the size token, not the text.
@@ -65,6 +63,8 @@ Then repeat from step 1.
 
 | Output | Meaning | Action |
 |---|---|---|
+| `--write needs --export FILE` | The write ran without the export path. | Run the `--write` command that the dry-run printed. |
+| `<dir> not found; using ~/Downloads` | On WSL, the Windows user name is not `$USER`. | Ask the student for the Windows downloads folder. Pass it with `--downloads`. |
 | `no <slug>*.html export in <dir>` | No export with the deck's file name in that folder. | Ask the student where the browser saved the file. Pass it with `--export`. |
 | `no matching sections` | The export is not this deck, or the section ids changed. | Check the file name. Compare the section ids. Do not write. |
 | `0 changed` | The export matches the source. | Nothing to merge. Ask the student whether they exported after the edit. |

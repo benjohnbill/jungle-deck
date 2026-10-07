@@ -48,6 +48,13 @@ class BuildReferenceTest(PathsExist, unittest.TestCase):
     def setUp(self):
         self.text = BUILD.read_text(encoding="utf-8")
 
+    def test_deck_folder_ignores_backup_previews_impeccable(self):
+        # D13 at build time: _backup/ must be ignored before revise writes it.
+        body = section(self.text, "Start from the stage template")
+        self.assertRegex(flat(body), r"(?i)week repo['’]?s? `\.gitignore`|`\.gitignore` (at|of|in) the week repo")
+        for line in ["_backup/", "previews/", ".impeccable/"]:
+            self.assertRegex(body, rf"(?m)^\s*{re.escape(line)}$", f"gitignore '{line}'")
+
     def test_style_source_order(self):
         body = flat(section(self.text, "Style source"))
         sources = ["`design_md`", "frontend-slides", "Phase 2",
@@ -125,13 +132,18 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
         self.assertRegex(body, r"(?i)show the student the summary")
         self.assertRegex(body, r"(?i)only after the student agrees")
 
-    def test_backup_or_commit_before_write(self):
+    def test_script_backs_up_and_prose_backup_stays_before_write(self):
+        text = flat(self.text)
+        self.assertRegex(text, r"(?i)the script copies the deck to `_backup/")
+        self.assertNotRegex(text, r"(?i)has no backup")
+        self.assertRegex(text, r"(?i)second line of defen[cs]e")
         body = self.loop()
-        backup = re.search(r"(?i)commit .*or copy .*deck", body)
-        self.assertTrue(backup, "no commit-or-copy step")
-        self.assertLess(backup.start(), body.find("--write"),
-                        "backup step must come before --write")
-        self.assertRegex(flat(self.text), r"(?i)no backup")
+        commit, write = body.find("**Commit the deck.**"), body.find("**Write.**")
+        self.assertNotIn(-1, (commit, write), "no commit step or no write step")
+        self.assertLess(commit, write, "commit step must come before the write step")
+
+    def test_backup_folder_is_ignored_since_build(self):
+        self.assertRegex(flat(self.text), r"(?i)`_backup/` is (in|listed in) the week repo['’]?s? `\.gitignore`[^.]*build")
 
     def test_keeps_student_wording(self):
         self.assertRegex(flat(self.text), r"(?i)do not (overwrite|change|rephrase) the student's wording")
@@ -158,6 +170,8 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
         self.assertTrue(any("--write" in l for l in lines), "no --write line")
         for rest in lines:
             flags = re.findall(r"--[\w-]+", rest)
+            if "--write" in flags:
+                self.assertIn("--export", flags, "--write line lacks --export")
             for flag in flags:
                 self.assertIn(flag, help_text, f"unknown flag {flag}")
             for flag in required:

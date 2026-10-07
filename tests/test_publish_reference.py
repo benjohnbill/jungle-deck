@@ -58,8 +58,11 @@ class PublishReferenceTest(unittest.TestCase):
 
     def test_week_repo_commit_set_and_gitignore(self):
         body = step(self.text, "Commit in the week repo")
+        # The lines are added at build time (reference/build.md); here only checked.
+        self.assertRegex(flat(body), r"(?i)(check|verify) that `\.gitignore`")
+        self.assertNotRegex(flat(body), r"(?i)add each of these lines")
         for line in ["_backup/", "previews/", ".impeccable/"]:
-            self.assertRegex(body, rf"(?m)^\s*{re.escape(line)}$", f"gitignore '{line}'")
+            self.assertIn(f"`{line}`", body, f"gitignore '{line}'")
         for item in ["BRIEF.md", "evidence/", ".html"]:
             self.assertIn(item, body, f"commit set lacks '{item}'")
 
@@ -112,6 +115,27 @@ class PublishReferenceTest(unittest.TestCase):
         tail = body[m.start():]
         for skipped in ["do not copy", "do not push", "card"]:
             self.assertIn(skipped, tail.lower())
+
+    def rules(self):
+        m = re.search(r"^## Rules\n(.*?)(?=^## )", self.text, re.S | re.M)
+        self.assertTrue(m, "no '## Rules' section")
+        return flat(m.group(1))
+
+    def test_card_rule_has_one_exception_relative_href_to_absolute(self):
+        rules = self.rules()
+        self.assertRegex(rules, r"(?i)do not remove or rewrite an existing card")
+        self.assertRegex(rules, r"(?i)exactly one exception")
+        self.assertRegex(rules, r"(?i)same deck URL[^.]*href[^.]*from relative to absolute")
+        self.assertRegex(rules, r"(?i)nothing else of an existing card changes")
+        card = flat(step(self.text, "Draft the index card"))
+        self.assertRegex(card, r"(?i)change only that href to the absolute URL")
+
+    def test_final_brief_commit_stays_local_and_student_is_told(self):
+        body = flat(step(self.text, "Close the BRIEF"))
+        self.assertRegex(body, r"(?i)commit stays local")
+        self.assertRegex(body, r"(?i)tell the student")
+        self.assertRegex(body, r"(?i)next push of the week repo")
+        self.assertRegex(body, r"(?i)no second (push )?confirmation")
 
     def test_done_is_last(self):
         body = step(self.text, "Close the BRIEF")

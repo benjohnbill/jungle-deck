@@ -61,6 +61,8 @@ def cmd_copy(args, settings):
     pages = expand(settings["pages_repo"])
     if not pages.is_dir():
         raise Fail(f"pages_repo is not a directory: {pages}")
+    if not (pages / ".git").exists():
+        raise Fail(f"pages_repo is not a git repository (no .git): {pages}")
     dest = pages / "study" / week_dir(args.week) / f"{args.slug}.html"
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(deck, dest)

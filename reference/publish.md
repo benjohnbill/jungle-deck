@@ -24,7 +24,9 @@ Record each result in the `Publish` section of `BRIEF.md` when you get it.
   question, or "잠깐" is not a yes. Without a yes, do not push either repo.
 - Ask for the push once. Do not ask again for each repo.
 - Do not change the URL of a deck that is already published. Do not remove
-  or rewrite an existing card.
+  or rewrite an existing card. There is exactly one exception: an existing
+  card for the same deck URL may have its href changed from relative to
+  absolute (step 3). Nothing else of an existing card changes.
 - `scripts/publish.py` never runs git. You run git; the script copies and
   checks.
 
@@ -37,17 +39,14 @@ the week number, and `<deck-slug>` is `slug` from `BRIEF.md`. Run
 
 ### 1. Commit in the week repo
 
-1. Open `.gitignore` at the week repo root. Add each of these lines that is
-   not there yet (D13):
-
-   ```
-   _backup/
-   previews/
-   .impeccable/
-   ```
-
+1. Check that `.gitignore` at the week repo root has the lines `_backup/`,
+   `previews/`, and `.impeccable/` (D13). Build adds them
+   (`reference/build.md`); here you only check them. If a line is missing,
+   stop and tell the student which one. Add it only when the student
+   agrees, as `reference/build.md` says.
 2. Stage the commit set by name: the deck HTML, `BRIEF.md`, the
-   `evidence/` folder of this deck, and `.gitignore` if you changed it.
+   `evidence/` folder of this deck, and `.gitignore` if it has changes
+   that are not committed.
 
    ```
    git add .gitignore study/<deck-slug>/<deck-slug>.html study/<deck-slug>/BRIEF.md study/<deck-slug>/evidence/
@@ -170,5 +169,8 @@ Only when the student confirms that the deck is live and done:
 
 1. Set `phase: done` and `updated` in `BRIEF.md`.
 2. Set `Next action` to "None. The deck is published."
-3. Commit `BRIEF.md` alone in the week repo. Do not push it; it goes out
-   with the student's next push.
+3. Commit `BRIEF.md` alone in the week repo. This commit stays local: do
+   not push it, and ask no second push confirmation in this publish. It
+   goes out with the next push of the week repo.
+4. Tell the student that this `phase: done` commit stays local until
+   their next push of the week repo.

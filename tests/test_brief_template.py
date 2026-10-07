@@ -81,6 +81,14 @@ class BriefTemplateTest(unittest.TestCase):
             with self.subTest(phase=phase):
                 self.assertIn(phase, hs)
 
+    def test_deck_values_are_placeholders_not_a_real_deck(self):
+        fm = front_matter(self.body)
+        self.assertEqual("<deck-slug>", fm["slug"])
+        self.assertEqual("study/<deck-slug>/<deck-slug>.html", fm["deck"])
+        self.assertRegex(fm["week"], r"^<[^>]+>$")
+        self.assertRegex(fm["updated"], r"^<[^>]+>$")
+        self.assertIn("# BRIEF — <deck-slug>", self.body)
+
     def test_skeleton_has_next_action_slot(self):
         self.assertIn("Next action", headings(self.body))
 
