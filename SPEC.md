@@ -100,6 +100,6 @@ jungle-deck/
 
 ## Open items
 
-- License of the skill itself (MIT suggested, to match frontend-slides).
+- License: MIT (decided 2026-10-07).
 - Which bsize file is final: `bsize-cast.html` or `bsize-cast-v2.html` (T11).
 - Issue tracker for the tickets: none set up yet.
