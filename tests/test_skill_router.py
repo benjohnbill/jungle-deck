@@ -157,7 +157,12 @@ class VerificationStateTest(unittest.TestCase):
     def test_revise_and_publish_first_on_a_nearly_finished_deck(self):
         self.assertRegex(
             self.flat,
-            r"`revise` and `publish`[^.]*first verified on a nearly finished deck")
+            r"`revise` and `publish`[^.]*first verified on the first real deck "
+            r"\(a nearly finished one\)")
+
+    def test_names_no_personal_deck(self):
+        for personal in ("bsize", "week06", "T11"):
+            self.assertNotIn(personal, self.text)
 
     def test_grill_and_build_first_on_the_next_new_deck(self):
         self.assertRegex(

@@ -42,18 +42,18 @@ The phase order is `grill → build → revise → publish → done` (D3).
 
 ## Skeleton
 
-Copy this block to `<week repo>/study/<deck-slug>/BRIEF.md`. Replace the example values.
+Copy this block to `<week repo>/study/<deck-slug>/BRIEF.md`. Replace each placeholder in angle brackets.
 
 ```markdown
 ---
 phase: grill
-slug: bsize-cast
-week: 6
-deck: study/bsize-cast/bsize-cast.html   # relative to the week repo root
-updated: 2026-10-07
+slug: <deck-slug>
+week: <N>
+deck: study/<deck-slug>/<deck-slug>.html   # relative to the week repo root
+updated: <YYYY-MM-DD>
 ---
 
-# BRIEF — bsize-cast
+# BRIEF — <deck-slug>
 
 ## Next action
 

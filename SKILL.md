@@ -73,8 +73,8 @@ the phase; the fallback is complete.
 As of 2026-10-07: No phase has been verified on a real deck yet. The
 phase files pass their contract tests in `tests/` only (D19).
 
-- `revise` and `publish` are first verified on a nearly finished deck
-  (week06, `bsize-cast`; T11).
+- `revise` and `publish` are first verified on the first real deck (a
+  nearly finished one).
 - `grill` and `build` are first verified on the next new deck.
 
 While a phase is unverified, treat its phase file as a draft. When a step

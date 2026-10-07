@@ -49,13 +49,13 @@ class Workspace(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name)
-        self.deck = self.tmp / "study" / "bsize-cast.html"
+        self.deck = self.tmp / "study" / "sample-deck.html"
         self.deck.parent.mkdir()
         self.deck.write_text(STAGE, encoding="utf-8")
         self.downloads = self.tmp / "Downloads"
         self.downloads.mkdir()
 
-    def export(self, html, name="bsize-cast.html", mtime=None):
+    def export(self, html, name="sample-deck.html", mtime=None):
         path = self.downloads / name
         path.write_text(html, encoding="utf-8")
         if mtime is not None:
@@ -136,15 +136,15 @@ class DryRun(Workspace):
 
 class FindExport(Workspace):
     def test_newest_browser_copy_of_this_deck_is_chosen(self):
-        self.export(export_of(STAGE.replace(S1_TITLE, "오래된 사본")), "bsize-cast.html", mtime=1000)
-        self.export(export_of(STAGE.replace(S1_TITLE, "가장 새 사본")), "bsize-cast (1).html", mtime=3000)
-        self.export(export_of(STAGE.replace(S1_TITLE, "중간 사본")), "bsize-cast(2).html", mtime=2000)
+        self.export(export_of(STAGE.replace(S1_TITLE, "오래된 사본")), "sample-deck.html", mtime=1000)
+        self.export(export_of(STAGE.replace(S1_TITLE, "가장 새 사본")), "sample-deck (1).html", mtime=3000)
+        self.export(export_of(STAGE.replace(S1_TITLE, "중간 사본")), "sample-deck(2).html", mtime=2000)
         # Newer, but another deck: a stem prefix alone must not match it.
-        self.export(export_of(STAGE.replace(S1_TITLE, "다른 덱")), "bsize-cast-v2.html", mtime=9000)
+        self.export(export_of(STAGE.replace(S1_TITLE, "다른 덱")), "sample-deck-v2.html", mtime=9000)
         self.export("<p>unrelated</p>", "notes.html", mtime=9500)
         code, out, _ = run("--deck", self.deck, "--downloads", self.downloads)
         self.assertEqual(code, 0)
-        self.assertIn("bsize-cast (1).html", out)
+        self.assertIn("sample-deck (1).html", out)
         self.assertIn("+        <h1>가장 새 사본</h1>", out)
 
     def test_wsl_without_the_user_folder_hints_at_downloads_flag(self):
@@ -177,7 +177,7 @@ class FindExport(Workspace):
         self.export(export_of(STAGE), "other-deck.html")
         code, _, err = run("--deck", self.deck, "--downloads", self.downloads)
         self.assertNotEqual(code, 0)
-        self.assertIn("bsize-cast", err)
+        self.assertIn("sample-deck", err)
 
 
 class WriteNeedsExport(Workspace):
@@ -210,7 +210,7 @@ class Write(Workspace):
         # non-breaking space in the edited heading, and differences outside
         # the sections (title, style, script) that must not come back.
         exported = export_of(STAGE).replace(
-            S2_H2, "<h2>bsize 는&nbsp;<em>헤더 포함</em></h2>").replace(
+            S2_H2, "<h2>블록 크기는&nbsp;<em>헤더 포함</em></h2>").replace(
             "<title>발표 제목</title>", "<title>바뀐 제목</title>").replace(
             "--ink:     #111111;", "--ink:     #222222;").replace(
             "const total = slides.length;", "const total = slides.length; /* x */")
@@ -218,7 +218,7 @@ class Write(Workspace):
         code, out, _ = run("--deck", self.deck, "--export", exp, "--write")
         self.assertEqual(code, 0)
         self.assertIn("1 changed, 3 unchanged", out)
-        expected = STAGE.replace(S2_H2, "<h2>bsize 는 <em>헤더 포함</em></h2>")
+        expected = STAGE.replace(S2_H2, "<h2>블록 크기는 <em>헤더 포함</em></h2>")
         self.assertEqual(self.deck.read_bytes(), expected.encode("utf-8"))
 
     def test_write_backs_up_the_deck_before_it_changes(self):
