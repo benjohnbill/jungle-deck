@@ -1,4 +1,4 @@
-"""Checks reference/local-template.md against SPEC.md D15 and D16.
+"""Checks reference/local-template.md against SPEC.md D15, D16, and D20.
 
 Run: python3 -m unittest discover -s tests
 """
@@ -19,6 +19,8 @@ REQUIRED_FIELDS = [
     "card format",
     "DESIGN.md path",
     "preferred accent",
+    "downloads folder",
+    "Python command",
 ]
 EMPTY = {"", "-", "—", "none", "n/a"}
 

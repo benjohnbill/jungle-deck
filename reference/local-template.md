@@ -1,6 +1,6 @@
 ---
 scope: The personal settings file jungle-deck.local.md (SPEC D16) and the first-run questions that write it
-authority: SPEC.md D15, D16. Key names here are a contract with scripts/publish.py and scripts/pull_edits.py; change them only together
+authority: SPEC.md D15, D16, D20. Key names here are a contract with scripts/publish.py and scripts/pull_edits.py; change them only together
 status: draft 2026-10-07
 ---
 

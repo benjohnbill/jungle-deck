@@ -1,7 +1,7 @@
 ---
 scope: What the jungle-deck skill does and how it is built
 authority: Design settled by a grilling session with the user, 2026-10-07 (Q1–Q27). Decisions here are the user's; change them only with the user
-status: confirmed 2026-10-07; implemented on main (tickets T1–T10), T11–T12 open
+status: confirmed 2026-10-07; implemented on main (tickets T1–T10, T13), T11–T12 open
 ---
 
 # jungle-deck — spec
@@ -20,8 +20,9 @@ is personal. The skill does not ship it.
 - **The author** (benjohnbill). Uses the skill weekly, with personal
   settings in `jungle-deck.local.md`. Same code path as everyone else.
 - **Other Jungle students.** Clone the public repo into
-  `~/.claude/skills/jungle-deck`. They may not have `frontend-slides`,
-  `grilling`, `claude-mem`, or any GitHub Pages site.
+  `~/.claude/skills/jungle-deck`. They may use macOS, Windows, Linux, or
+  WSL. They may not have `frontend-slides`, `grilling`, `claude-mem`, or
+  any GitHub Pages site.
 
 ## Decisions
 
@@ -42,10 +43,11 @@ is personal. The skill does not ship it.
 | D13 | `.gitignore` in the deck's week repo: `_backup/`, `previews/`, `.impeccable/` |
 | D14 | Design feedback: at `publish`, show what this deck changed against the student's DESIGN.md as a diff; apply only the items the student picks. With no DESIGN.md, offer to extract one from this deck (Google Labs DESIGN.md format), and record its path in local.md. Later decks then skip style discovery |
 | D15 | Dependencies: use it if present, else a built-in fallback. `grilling` → inline round rules. `frontend-slides` → vendored files with the MIT notice. `claude-mem` → skip. No publish settings → stop after a finished local HTML |
-| D16 | Personal settings: `jungle-deck.local.md` in the skill directory, gitignored. Fields: display name, week-repo root, Pages repo path and URL base, card format, DESIGN.md path, preferred accent. If missing, the first run asks a few questions and writes it. The author uses it too |
+| D16 | Personal settings: `jungle-deck.local.md` in the skill directory, gitignored. Fields: display name, week-repo root, Pages repo path and URL base, card format, DESIGN.md path, preferred accent, downloads folder, Python command. If missing, the first run asks a few questions and writes it. The author uses it too |
 | D17 | Style: first deck uses frontend-slides style discovery (Phase 2). After that, the DESIGN.md from D14 |
 | D18 | Template page: one fixed page pinned at the top of `benjohnbill.github.io`, no week or topic. It holds the phase diagram, the one-line install, the first-run questions, the author's three decks as examples, and links to `frontend-slides` and the skill repo. Built only after the skill works and the publish path is verified |
 | D19 | Verification state is written into the skill: the first real use (a nearly finished deck) verifies only `revise` and `publish`. `grill` and `build` are first verified on the next new deck |
+| D20 | Portability (2026-10-07): the skill runs on macOS, Windows, Linux, and WSL. The downloads folder default is detected per OS, and the student confirms it into `downloads_dir`; on WSL with no answer, ask, do not guess. Python 3.8 or later: the first run tries `python3`, `python`, `py -3` and records the first that works as `python_cmd`. Check again only when it is empty or fails. Never install Python |
 
 ## Shared Jungle context (ships in the skill)
 
@@ -76,7 +78,9 @@ jungle-deck/
 ├─ templates/stage.html     # D9
 ├─ scripts/
 │  ├─ pull_edits.py         # D11, generalized from week04/study/pull-edits.py
+│  ├─ downloads_dir.py      # D20 downloads folder per OS
 │  └─ publish.py            # D12 copy, cmp, poll, card grep (no push)
+├─ tests/                   # unittest; contract tests for the reference files
 ├─ vendor/frontend-slides/  # viewport-base.css etc. + MIT LICENSE
 └─ .gitignore               # jungle-deck.local.md
 ```
@@ -97,9 +101,10 @@ jungle-deck/
 | T10 | `SKILL.md` router + dependency detection (D2, D4, D6, D15, D19) | T7, T8, T9 |
 | T11 | Dogfood on the author's nearly finished deck: revise + publish only | T10 |
 | T12 | Template page on benjohnbill.github.io (D18) | T11 |
+| T13 | Portability: downloads folder per OS, Python check, `python_cmd` in the docs (D20) | T10 |
 
 ## Open items
 
 - License: MIT (decided 2026-10-07).
 - Which file is the final deck for the T11 run: the author decides at T11.
-- Issue tracker for the tickets: none set up yet.
+- Issue tracker for the tickets: GitHub Issues of `benjohnbill/jungle-deck` (see `docs/agents/issue-tracker.md`).
