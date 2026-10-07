@@ -1,7 +1,7 @@
 ---
 scope: What the jungle-deck skill does and how it is built
 authority: Design settled by a grilling session with the user, 2026-10-07 (Q1–Q27). Decisions here are the user's; change them only with the user
-status: confirmed 2026-10-07; not implemented
+status: confirmed 2026-10-07; implemented on main (tickets T1–T10), T11–T12 open
 ---
 
 # jungle-deck — spec
@@ -35,7 +35,7 @@ is personal. The skill does not ship it.
 | D6 | Calling the skill assumes design may already be done. With no BRIEF.md, start at `grill`. With a BRIEF.md at `build` or later, skip grilling |
 | D7 | `grill` settles six things: (1) the one-sentence conclusion, lead-first, and the closing line; (2) the story frame (起承轉結 7 slides, or symptom → evidence → cause 6 slides); (3) one thesis sentence per slide, **written by the student**; (4) the evidence list: which real output goes on which slide; (5) the accent / style variation; (6) terms the audience may not know, to define on screen. The agent proposes candidates for 1, 2, 4, 5, 6; the student chooses |
 | D8 | Context collection runs at the start of `grill`, always: `git log` of the week repo, its README and notes, the progress memo if one exists. `claude-mem` is used only when installed |
-| D9 | `build` uses a stage-runtime template (derived from the author's `bsize-cast-v2.html`, content removed): fixed slides, one active, `#N` hash, per-element `data-step`, speaker notes on `N`, in-browser edit mode on `E`, `Ctrl+S` export. Speaker notes are a light suggested script only |
+| D9 | `build` uses a stage-runtime template (derived from the author's own stage-runtime deck, content removed): fixed slides, one active, `#N` hash, per-element `data-step`, speaker notes on `N`, in-browser edit mode on `E`, `Ctrl+S` export. Speaker notes are a light suggested script only |
 | D10 | The 2-minute limit is background, not a gate. No timer check. Do not cut content only to fit a timer |
 | D11 | `revise` is the main loop. The student edits in the browser and exports; a script merges the export back into the source by `<section id>`; the agent then adjusts layout and evidence to match. Repeat until the student says to publish. The merge-back script is required |
 | D12 | `publish`: commit the deck, BRIEF.md, and `evidence/` in the week repo. Copy the deck to `<pages repo>/study/weekNN/<deck-slug>.html` and verify with `cmp`. Draft the index card from BRIEF.md. Commit in the Pages repo. Ask the student once, then push both repos. Poll until the deck URL returns 200, `cmp` the live page, and grep the index for the card URL. Edit only the source, never the copy. Existing published decks keep their URLs |
@@ -45,7 +45,7 @@ is personal. The skill does not ship it.
 | D16 | Personal settings: `jungle-deck.local.md` in the skill directory, gitignored. Fields: display name, week-repo root, Pages repo path and URL base, card format, DESIGN.md path, preferred accent. If missing, the first run asks a few questions and writes it. The author uses it too |
 | D17 | Style: first deck uses frontend-slides style discovery (Phase 2). After that, the DESIGN.md from D14 |
 | D18 | Template page: one fixed page pinned at the top of `benjohnbill.github.io`, no week or topic. It holds the phase diagram, the one-line install, the first-run questions, the author's three decks as examples, and links to `frontend-slides` and the skill repo. Built only after the skill works and the publish path is verified |
-| D19 | Verification state is written into the skill: the first real use (week06, deck almost done) verifies only `revise` and `publish`. `grill` and `build` are first verified on the next week's deck |
+| D19 | Verification state is written into the skill: the first real use (a nearly finished deck) verifies only `revise` and `publish`. `grill` and `build` are first verified on the next new deck |
 
 ## Shared Jungle context (ships in the skill)
 
@@ -88,18 +88,18 @@ jungle-deck/
 | T1 | Scaffold: README, LICENSE, vendored frontend-slides files with MIT notice | — |
 | T2 | `reference/brief-template.md`: BRIEF.md front matter (`phase`, slug, week, deck path) and the per-phase sections | — |
 | T3 | `reference/local-template.md` + first-run questions (D16) | — |
-| T4 | `templates/stage.html` from `bsize-cast-v2.html`: content removed, tokens on `:root`, section ids kept | T1 |
+| T4 | `templates/stage.html` from the author's stage-runtime deck: content removed, tokens on `:root`, section ids kept | T1 |
 | T5 | `scripts/pull_edits.py`: generalize week04's script (any deck path, any export in Downloads, match by section id, notes included). Tests first | T4 |
 | T6 | `scripts/publish.py`: copy + `cmp`, poll 200, live `cmp`, card grep. No git push inside. Tests first | T3 |
 | T7 | `reference/grill.md` + `reference/context.md` (D7, D8, inline grilling) | T2 |
 | T8 | `reference/build.md` + `reference/revise.md` (D9–D11, D17) | T2, T4, T5 |
 | T9 | `reference/publish.md`: commit set, card drafting, push confirmation, DESIGN.md diff and extraction (D12–D14) | T2, T3, T6 |
 | T10 | `SKILL.md` router + dependency detection (D2, D4, D6, D15, D19) | T7, T8, T9 |
-| T11 | Dogfood on week06 bsize deck: revise + publish only | T10 |
+| T11 | Dogfood on the author's nearly finished deck: revise + publish only | T10 |
 | T12 | Template page on benjohnbill.github.io (D18) | T11 |
 
 ## Open items
 
 - License: MIT (decided 2026-10-07).
-- Which bsize file is final: `bsize-cast.html` or `bsize-cast-v2.html` (T11).
+- Which file is the final deck for the T11 run: the author decides at T11.
 - Issue tracker for the tickets: none set up yet.
