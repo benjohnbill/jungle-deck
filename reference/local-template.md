@@ -74,17 +74,18 @@ The scripts read these key names; the agent reads `python_cmd`. Do not rename th
 text from BRIEF.md and shows it to the student first.
 
 ```html
-<a data-week="{week}" data-topic="{topic}" class="card two" href="{deck_url}">
+<a class="card" data-week="{week}" data-topic="{topic}" data-kind="deck" data-src="{src}" href="{deck_url}">
   <div class="t dh">{title}</div>
   <div class="d">{description}</div>
-  <div class="m">{meta}</div>
+  <div class="m"><span class="b">덱</span><span class="b wk">{week}주차</span><span>{meta}</span></div>
 </a>
 ```
 
 | Placeholder | Value |
 |---|---|
 | `{week}` | Week number without zero padding, for example `6` |
-| `{topic}` | Topic label of that week's group in the index |
+| `{topic}` | One `data-topic` value already used in the index (one topic per card). A new topic needs the student's approval and a title-color rule in the index CSS |
+| `{src}` | Path of the deck source file, relative to the parent directory of `pages_repo`, for example `week06/study/<deck-slug>.html` |
 | `{deck_url}` | The deck URL from `pages_url_base` |
 | `{title}` | The deck title |
 | `{description}` | Two or three sentences from the BRIEF.md conclusion |
