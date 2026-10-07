@@ -64,11 +64,21 @@ def same(a, b):
     return norm(a) == norm(b)
 
 
+WIN_USERS = Path("/mnt/c/Users")
+
+
 def default_downloads():
-    """The Windows downloads folder seen from WSL, else ~/Downloads."""
+    """The Windows downloads folder seen from WSL, else ~/Downloads. On WSL
+    the Windows user name can differ from $USER: say so, do not guess further."""
     user = os.environ.get("USER", "")
-    win = Path("/mnt/c/Users") / user / "Downloads"
-    return win if user and win.is_dir() else Path.home() / "Downloads"
+    win = WIN_USERS / user / "Downloads"
+    if user and win.is_dir():
+        return win
+    if WIN_USERS.is_dir():
+        print(f"pull_edits: {win} not found; using ~/Downloads. "
+              "Pass --downloads <Windows downloads folder> if the export is there.",
+              file=sys.stderr)
+    return Path.home() / "Downloads"
 
 
 def find_export(deck, downloads):

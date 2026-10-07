@@ -147,6 +147,32 @@ class FindExport(Workspace):
         self.assertIn("bsize-cast (1).html", out)
         self.assertIn("+        <h1>가장 새 사본</h1>", out)
 
+    def test_wsl_without_the_user_folder_hints_at_downloads_flag(self):
+        users = self.tmp / "Users"
+        (users / "someone-else" / "Downloads").mkdir(parents=True)
+        self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")))
+        env = {"USER": "student", "HOME": str(self.tmp)}
+        with unittest.mock.patch.object(pull_edits, "WIN_USERS", users), \
+                unittest.mock.patch.dict(os.environ, env):
+            code, out, err = run("--deck", self.deck)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(err.strip().splitlines()), 1)
+        self.assertIn("--downloads", err)
+        self.assertIn(str(users / "student" / "Downloads"), err)
+        self.assertIn(str(self.downloads), out)
+
+    def test_wsl_user_folder_is_used_without_a_hint(self):
+        users = self.tmp / "Users"
+        win = users / "student" / "Downloads"
+        win.mkdir(parents=True)
+        (win / self.deck.name).write_text(export_of(STAGE), encoding="utf-8")
+        with unittest.mock.patch.object(pull_edits, "WIN_USERS", users), \
+                unittest.mock.patch.dict(os.environ, {"USER": "student"}):
+            code, out, err = run("--deck", self.deck)
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        self.assertIn(str(win), out)
+
     def test_no_copy_in_downloads_exits_non_zero(self):
         self.export(export_of(STAGE), "other-deck.html")
         code, _, err = run("--deck", self.deck, "--downloads", self.downloads)
