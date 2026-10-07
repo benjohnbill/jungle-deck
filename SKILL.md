@@ -66,7 +66,7 @@ the phase; the fallback is complete.
 | `grilling` skill (grill) | The session's skill list names `grilling` | The inline rules in `reference/grill.md`, section "Grilling rules" |
 | `frontend-slides` skill (build) | The skill list names `frontend-slides`, also as `frontend-slides:frontend-slides` | The vendored copies in `vendor/frontend-slides/` (MIT, upstream in `vendor/frontend-slides/SOURCE.md`) |
 | `claude-mem` (grill, context) | A `claude-mem:mem-search` skill or an `mcp__plugin_claude-mem_*` search tool is available | Silently skip it as a context source |
-| Pages settings (publish) | `pages_repo` in local.md is not empty and the path is a git repository | Stop after a finished local HTML: commit in the week repo, print the deck path |
+| Pages settings (publish) | `pages_repo` in local.md is not empty | Stop after a finished local HTML: commit in the week repo, print the deck path. A `pages_repo` that is set but has no `.git` is an error, not the fallback: `scripts/publish.py copy` stops and names `pages_repo`. Ask the student to fix the path |
 
 ## Verification state
 

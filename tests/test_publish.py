@@ -48,7 +48,7 @@ class Workspace(unittest.TestCase):
         self.deck.parent.mkdir(parents=True)
         self.deck.write_bytes(DECK)
         self.pages = self.tmp / "pages"
-        self.pages.mkdir()
+        (self.pages / ".git").mkdir(parents=True)
         self.local = self.tmp / "jungle-deck.local.md"
 
 
@@ -71,7 +71,7 @@ class Copy(Workspace):
             self.assertEqual(code, 0)
             self.assertIn("local HTML", out)
             self.assertIn(str(self.deck), out)
-        self.assertEqual(list(self.pages.iterdir()), [])
+        self.assertFalse((self.pages / "study").exists())
 
     def test_corrupted_copy_exits_nonzero_with_one_line(self):
         write_local(self.local, pages_repo=str(self.pages),
@@ -112,6 +112,19 @@ class Copy(Workspace):
         self.assertIn(str(typo), err)
         self.assertFalse(typo.exists())
 
+    def test_pages_repo_without_git_gets_no_copy(self):
+        plain = self.tmp / "pages-typo"
+        plain.mkdir()
+        write_local(self.local, pages_repo=str(plain),
+                    pages_url_base="https://x.github.io/")
+        code, _, err = run("copy", "--local", str(self.local),
+                           "--deck", str(self.deck), "--week", "6")
+        self.assertNotEqual(code, 0)
+        self.assertIn("pages_repo", err)
+        self.assertIn(str(plain), err)
+        self.assertEqual(len(err.strip().splitlines()), 1)
+        self.assertEqual(list(plain.iterdir()), [])
+
     def test_missing_deck_exits_nonzero_with_one_line(self):
         write_local(self.local, pages_repo=str(self.pages),
                     pages_url_base="https://x.github.io/")
@@ -138,7 +151,6 @@ class Contract(unittest.TestCase):
 
 class UrlBase(Workspace):
     def origin(self, url):
-        (self.pages / ".git").mkdir()
         (self.pages / ".git" / "config").write_text(
             f'[core]\n\tbare = false\n[remote "origin"]\n\turl = {url}\n'
             '\tfetch = +refs/heads/*:refs/remotes/origin/*\n')

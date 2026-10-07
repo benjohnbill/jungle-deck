@@ -138,6 +138,13 @@ class DependencyTest(unittest.TestCase):
                 self.assertTrue(detect and detect != "—", f"{dep}: no detection")
                 self.assertIn(fallback, fall)
 
+    def test_pages_repo_without_git_is_an_error_not_the_fallback(self):
+        # publish.py copy fails on a pages_repo with no .git (a typo).
+        row = " ".join(next(r for r in self.rows if "Pages" in r[0]))
+        self.assertRegex(row, r"(?i)`pages_repo` in local\.md is (empty|not empty)")
+        self.assertRegex(row, r"(?i)no `\.git`[^|]*error")
+        self.assertRegex(row, r"(?i)not the fallback")
+
 
 class VerificationStateTest(unittest.TestCase):
     """D19: the skill states which phases a real deck has verified."""
