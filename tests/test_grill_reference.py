@@ -81,8 +81,16 @@ class ContextReferenceTest(unittest.TestCase):
 
     def test_shared_rows_present(self):
         for row in ["Event", "Audience", "Language", "Time", "Display",
-                    "Story type", "Reuse", "Deadline"]:
+                    "Story type", "Reuse"]:
             self.assertRegex(self.text, rf"(?m)^\| {row}", f"row '{row}' missing")
+
+    def test_no_personal_theme_rule(self):
+        self.assertNotRegex(self.text, r"(?i)light theme")
+
+    def test_slide_count_is_a_soft_guideline(self):
+        self.assertRegex(self.text, r"(?i)about 6 slides is common")
+        self.assertNotRegex(self.text, r"±")
+        self.assertNotRegex(self.text, r"(?i)aim for \d")
 
     def test_time_is_background_not_gate(self):
         self.assertRegex(self.text, r"(?i)background, not a gate")
@@ -91,7 +99,7 @@ class ContextReferenceTest(unittest.TestCase):
         lower = self.text.lower()
         for banned in ["benjohnbill", "github.io", "오라버니"]:
             self.assertNotIn(banned, lower, f"personal value '{banned}' leaked")
-        for row in ["Speaker", "Format"]:
+        for row in ["Speaker", "Format", "Deadline"]:
             self.assertNotRegex(self.text, rf"(?m)^\| {row}", f"personal row '{row}'")
         self.assertIn("jungle-deck.local.md", self.text)
 
