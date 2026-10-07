@@ -24,7 +24,9 @@ Record each result in the `Publish` section of `BRIEF.md` when you get it.
   question, or "잠깐" is not a yes. Without a yes, do not push either repo.
 - Ask for the push once. Do not ask again for each repo.
 - Do not change the URL of a deck that is already published. Do not remove
-  or rewrite an existing card.
+  or rewrite an existing card. There is exactly one exception: an existing
+  card for the same deck URL may have its href changed from relative to
+  absolute (step 3). Nothing else of an existing card changes.
 - `scripts/publish.py` never runs git. You run git; the script copies and
   checks.
 
@@ -167,5 +169,8 @@ Only when the student confirms that the deck is live and done:
 
 1. Set `phase: done` and `updated` in `BRIEF.md`.
 2. Set `Next action` to "None. The deck is published."
-3. Commit `BRIEF.md` alone in the week repo. Do not push it; it goes out
-   with the student's next push.
+3. Commit `BRIEF.md` alone in the week repo. This commit stays local: do
+   not push it, and ask no second push confirmation in this publish. It
+   goes out with the next push of the week repo.
+4. Tell the student that this `phase: done` commit stays local until
+   their next push of the week repo.
