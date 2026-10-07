@@ -3,3 +3,4 @@ _backup/
 previews/
 .impeccable/
 __pycache__/
+.claude/worktrees/
