@@ -88,9 +88,8 @@ class ContextReferenceTest(unittest.TestCase):
         self.assertNotRegex(self.text, r"(?i)light theme")
 
     def test_slide_count_is_a_soft_guideline(self):
-        self.assertRegex(self.text, r"(?i)about 6 slides is common")
-        self.assertNotRegex(self.text, r"±")
-        self.assertNotRegex(self.text, r"(?i)aim for \d")
+        self.assertRegex(self.text, r"(?i)about 6 slides, ± 4 \(a reference, not a rule\)")
+        self.assertNotRegex(self.text, r"(?i)aim for \d|6 ± 2")
 
     def test_time_is_background_not_gate(self):
         self.assertRegex(self.text, r"(?i)background, not a gate")
