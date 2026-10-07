@@ -8,15 +8,20 @@ must not replace the source wholesale. Only the inside of each
 notes ride along because <aside class="notes"> sits inside its section.
 
 Dry-run by default: print a unified diff per changed section and a
-summary line. --write replaces only the changed sections and leaves every
-byte outside them (head, styles, scripts) as it was.
+summary line. --write needs the --export that the dry-run read. It copies
+the deck to _backup/ next to it, then atomically replaces only the changed
+sections and leaves every byte outside them (head, styles, scripts) as it was.
 """
 
 import argparse
 import difflib
 import os
 import re
+import shlex
+import shutil
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 # Comments are matched first so a <section> written inside one (the
@@ -47,10 +52,15 @@ def clean(inner):
     return inner
 
 
+def lf(text):
+    """CRLF to LF: the one newline rule for comparing and for diffs."""
+    return text.replace("\r\n", "\n")
+
+
 def same(a, b):
     """Equal up to serialization: browsers write a text '>' as '&gt;', and
     the HTML parser turns CRLF into LF."""
-    norm = lambda t: t.replace("\r\n", "\n").replace("&gt;", ">")
+    norm = lambda t: lf(t).replace("&gt;", ">")
     return norm(a) == norm(b)
 
 
@@ -76,16 +86,42 @@ class Fail(Exception):
     """A one-line reason to exit non-zero."""
 
 
-def read(path):
+def read_keeping_newlines(path):
     # newline="" keeps CRLF and the like, so --write changes only the sections.
     with open(path, encoding="utf-8", newline="") as f:
         return f.read()
 
 
+def backup(deck):
+    """Copy deck to <deck dir>/_backup/<stem>.<YYYYmmdd-HHMMSS>.html; return the path."""
+    folder = deck.parent / "_backup"
+    folder.mkdir(exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    dest, n = folder / f"{deck.stem}.{stamp}.html", 1
+    while dest.exists():  # two writes in one second: keep both backups
+        dest, n = folder / f"{deck.stem}.{stamp}-{n}.html", n + 1
+    shutil.copy2(deck, dest)
+    return dest
+
+
+def write_atomic(path, text):
+    """Write text to a temp file next to path, then rename it over path."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        shutil.copymode(path, tmp)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+
+
 def merge(deck, export, write):
-    src = read(deck)
-    new = {sid: clean(m.group(2)) for sid, m in sections(read(export))}
-    src_ids = [sid for sid, _ in sections(src)]
+    src = read_keeping_newlines(deck)
+    src_sections = list(sections(src))
+    new = {sid: clean(m.group(2)) for sid, m in sections(read_keeping_newlines(export))}
+    src_ids = [sid for sid, _ in src_sections]
     if not set(src_ids) & set(new):
         raise Fail(f"{export}: no matching sections (deck ids: {', '.join(src_ids) or 'none'})")
     missing = [sid for sid in src_ids if sid not in new]
@@ -93,14 +129,14 @@ def merge(deck, export, write):
 
     print(f"export: {export}")
     changed, unchanged, edits = [], [], []
-    for sid, m in sections(src):
+    for sid, m in src_sections:
         if sid not in new:
             continue
         if same(clean(m.group(2)), new[sid]):
             unchanged.append(sid)
             continue
         changed.append(sid)
-        inner = new[sid].replace("\r\n", "\n")
+        inner = lf(new[sid])
         if "\r\n" in src:
             inner = inner.replace("\n", "\r\n")
         edits.append((m.start(2), m.end(2), inner))
@@ -118,14 +154,17 @@ def merge(deck, export, write):
 
     if not write:
         if edits:
-            print("dry-run: nothing written; rerun with --write to apply")
+            print("dry-run: nothing written. To write this export, run:")
+            print("  " + shlex.join(["python3", str(Path(__file__).resolve()),
+                                     "--deck", str(deck.resolve()),
+                                     "--export", str(export.resolve()), "--write"]))
         return
     if edits:
         out = src
         for start, end, inner in reversed(edits):
             out = out[:start] + inner + out[end:]
-        with open(deck, "w", encoding="utf-8", newline="") as f:
-            f.write(out)
+        print(f"backup: {backup(deck)}")
+        write_atomic(deck, out)
         print(f"wrote {', '.join(changed)} into {deck}")
 
 
@@ -138,8 +177,13 @@ def main(argv=None):
                      help="where to look for the newest export (default: "
                           "/mnt/c/Users/$USER/Downloads if present, else ~/Downloads)")
     ap.add_argument("--write", action="store_true",
-                    help="apply the changed sections to the deck (default: dry-run)")
+                    help="apply the changed sections to the deck (default: dry-run); "
+                         "needs --export")
     args = ap.parse_args(argv)
+    if args.write and not args.export:
+        print("pull_edits: --write needs --export FILE (the export you reviewed in the dry-run)",
+              file=sys.stderr)
+        return 2
     try:
         export = args.export or find_export(args.deck, args.downloads or default_downloads())
         merge(args.deck, export, args.write)

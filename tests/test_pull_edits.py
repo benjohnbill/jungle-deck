@@ -9,8 +9,11 @@ import contextlib
 import importlib.util
 import io
 import os
+import re
+import shlex
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -151,6 +154,30 @@ class FindExport(Workspace):
         self.assertIn("bsize-cast", err)
 
 
+class WriteNeedsExport(Workspace):
+    def test_write_without_export_exits_non_zero_and_writes_nothing(self):
+        self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")))
+        code, _, err = run("--deck", self.deck, "--downloads", self.downloads, "--write")
+        self.assertNotEqual(code, 0)
+        self.assertIn("--export", err)
+        self.assertEqual(len(err.strip().splitlines()), 1)
+        self.assertEqual(self.deck.read_text(encoding="utf-8"), STAGE)
+
+    def test_dry_run_prints_the_write_command_with_the_export_it_read(self):
+        exp = self.export(export_of(STAGE.replace(S1_TITLE, "새 제목")), f"{self.deck.stem} (1).html")
+        code, out, _ = run("--deck", self.deck, "--downloads", self.downloads)
+        self.assertEqual(code, 0)
+        line = [l for l in out.splitlines() if "--write" in l]
+        self.assertEqual(len(line), 1, out)
+        argv = shlex.split(line[0])
+        self.assertEqual(argv[0], "python3")
+        self.assertEqual(argv[argv.index("--export") + 1], str(exp.resolve()))
+        # Running the printed command writes exactly the reviewed export.
+        code, _, _ = run(*argv[2:])
+        self.assertEqual(code, 0)
+        self.assertIn("<h1>새 제목</h1>", self.deck.read_text(encoding="utf-8"))
+
+
 class Write(Workspace):
     def test_round_trip_changes_only_the_edited_section(self):
         # The export as Ctrl+S writes it: slide numbers filled, a typed
@@ -168,6 +195,31 @@ class Write(Workspace):
         expected = STAGE.replace(S2_H2, "<h2>bsize 는 <em>헤더 포함</em></h2>")
         self.assertEqual(self.deck.read_bytes(), expected.encode("utf-8"))
 
+    def test_write_backs_up_the_deck_before_it_changes(self):
+        crlf = STAGE.replace("\n", "\r\n").encode("utf-8")
+        self.deck.write_bytes(crlf)
+        exp = self.export(export_of(STAGE.replace(S2_H2, "<h2>새 제목</h2>")))
+        code, out, _ = run("--deck", self.deck, "--export", exp, "--write")
+        self.assertEqual(code, 0)
+        backups = list((self.deck.parent / "_backup").iterdir())
+        self.assertEqual(len(backups), 1)
+        self.assertRegex(backups[0].name, rf"^{re.escape(self.deck.stem)}\.\d{{8}}-\d{{6}}\.html$")
+        self.assertEqual(backups[0].read_bytes(), crlf)
+        self.assertIn(str(backups[0]), out)
+        self.assertNotEqual(self.deck.read_bytes(), crlf)
+
+    def test_failed_write_keeps_the_deck_and_leaves_no_temp_file(self):
+        exp = self.export(export_of(STAGE.replace(S2_H2, "<h2>새 제목</h2>")))
+        def boom(*_):
+            raise OSError("disk full")
+        with unittest.mock.patch.object(pull_edits.os, "replace", boom):
+            code, _, err = run("--deck", self.deck, "--export", exp, "--write")
+        self.assertNotEqual(code, 0)
+        self.assertIn("disk full", err)
+        self.assertEqual(self.deck.read_text(encoding="utf-8"), STAGE)
+        self.assertEqual(sorted(p.name for p in self.deck.parent.iterdir()),
+                         ["_backup", self.deck.name])
+
     def test_unchanged_export_leaves_the_source_bytes_alone(self):
         exp = self.export(export_of(STAGE))
         before = self.deck.stat().st_mtime_ns
@@ -175,6 +227,7 @@ class Write(Workspace):
         self.assertEqual(code, 0)
         self.assertEqual(self.deck.read_text(encoding="utf-8"), STAGE)
         self.assertEqual(self.deck.stat().st_mtime_ns, before)
+        self.assertFalse((self.deck.parent / "_backup").exists())
 
 
 if __name__ == "__main__":
