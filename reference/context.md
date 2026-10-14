@@ -1,19 +1,26 @@
+---
+scope: The setting of the weekly Krafton Jungle talk, the same for every student and every week (SPEC "Shared Jungle context", D22)
+authority: SPEC.md "Shared Jungle context", D10, D22. tests/test_grill_reference.py checks the rows here
+status: revised 2026-10-15; unverified draft (D19)
+---
+
 # Shared Jungle context
 
-This is the setting of the weekly Krafton Jungle talk. It holds for every Jungle student.
+This is the setting of the weekly Krafton Jungle talk. It holds for every Jungle student, in every week: C weeks, Pintos weeks, and the later Python and AI weeks (D22).
 Treat each row as a default, not as a question. Change a row only when the student says so.
 
-Source: SPEC "Shared Jungle context", from the author's own words (sessions 2026-09-16 to 2026-10-07).
+Source: SPEC "Shared Jungle context", from the author's own words (sessions 2026-09-16 to 2026-10-15).
 
-| Field | Value | Consequence for the deck |
+| Field | Value | Consequence for the presentation |
 |---|---|---|
-| Event | A weekly Thursday talk. The topic is troubleshooting from this week's work, in a refined, WIL-like form. The talk is lead-first (두괄식). | One deck per week. State the conclusion on an early slide. |
-| Audience | The cohort that studies C together. The level spread is wide. More than half already know the topic. | Do not explain the exercise. Lead with the surprise. Define a domain term on screen when it is not general C (example: a `GET_SIZE` macro). |
+| Event | A weekly Thursday talk. The topic is what the student learned this week, in a refined, WIL-like form. | One presentation per week. The title slide states the point, lead-first (두괄식). |
+| Audience | The cohort on the same week's curriculum. The level spread is wide. More than half already know the topic. | Do not explain the exercise. Lead with the surprise. Define this week's domain terms on screen (example: a project-specific macro or API name). |
 | Language | Korean speech and prose. Code, identifiers, and tool output stay in their original form. | Use a font that renders Korean and code. Break Korean text at word boundaries. |
-| Time | 2 minutes. No Q&A. The limit is background, not a gate. | About 6 slides, ± 4 (a reference, not a rule). Do not run a timer check. Do not cut content only to fit the time (D10). Speaker notes are a light suggested script. |
-| Display | A large monitor in a bright lecture room. | The accent and the code must stay readable in bright light. Keep code text large. |
-| Story type | An experiment or debugging story is preferred. "2분이지만 발표는 스토리텔링." | Use a narrative frame (D7 decision 2), not an explanation-style list. |
-| Reuse | The deck also feeds the student's WIL. | Each slide must read without the speaker. Keep the notes in the file. |
+| Time | 2 minutes. No Q&A. The limit is background, not a gate (D10). | 6 ± 2 slides (a suggestion, not a rule). Do not run a timer check. Do not cut content only to fit the time. Speaker notes are a light suggested script unless the student confirmed a full script. |
+| Display | A large monitor in a bright lecture room. | The accent, the code, and the logs must stay readable in bright light. Keep code text large. |
+| Story type | Storytelling is preferred: "2분이지만 발표는 스토리텔링." A troubleshooting or experiment story fits best. | Use a narrative story frame (grill round 3), not an explanation-style list. |
+| Evidence | Real output that the student ran this week: test results or terminal logs, from whatever toolchain the week uses. | Use only output the student ran. Each piece of evidence names the command that made it. |
+| Reuse | The presentation also feeds the student's WIL. | Each slide must read without the speaker. Keep the notes in the file. |
 
 ## Not in this file
 
