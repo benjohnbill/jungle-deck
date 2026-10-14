@@ -189,7 +189,7 @@ class DesignReferenceTest(unittest.TestCase):
     def test_design_section_fields_match_brief_template(self):
         brief = section(BRIEF.read_text(encoding="utf-8"), "Design")
         body = section(self.text, "The Design section")
-        for field in ("Source", "Tokens", "Accent"):
+        for field in ("Source", "Tokens", "Accent", "Accent key"):
             self.assertIn(f"- {field}:", brief)
             self.assertIn(f"`{field}`", body)
         self.assertIn("D14", body)
@@ -230,6 +230,19 @@ class DesignReferenceTest(unittest.TestCase):
         self.assertEqual(set(empty_chain_values(self.text)),
                          {"--mut", "--panel", "--grid"})
         self.assertIn("Ask the student to confirm the accent", body)
+
+    def test_accent_message_shows_the_source_key(self):
+        # Issue #29: one accent message, with the DESIGN.md key or the
+        # fallback next to the color; the student confirms or picks another.
+        body = flat(section(self.text, "Token mapping"))
+        self.assertIn("강조색은 `<color>`이고, <from>에서 가져왔어요. "
+                      "이 색으로 갈까요, 다른 색을 고를까요?", body)
+        self.assertIn("DESIGN.md의 `<key>`", body)
+        self.assertIn("| 기본값 | `fallback` |", body)
+        self.assertIn("이 배경에서는 기본값도 잘 안 보일 수 있어요.", body)
+        self.assertIn("confirm it or pick another color", body)
+        steps = flat(section(self.text, "Steps"))
+        self.assertIn('step 3 of "Accent rule"', steps)
 
     def test_fonts_keep_template_sizes(self):
         body = flat(section(self.text, "Token mapping"))
@@ -299,6 +312,14 @@ class MappingTest(unittest.TestCase):
                                 '  primary: "#1e1b4b"\n  link: "#60a5fa"\n')
         out, src = map_tokens(colors, self.text)
         self.assertEqual((out["--acc"], src), ("#60a5fa", "link"))
+
+    def test_semantic_color_is_taken_and_its_key_returned(self):
+        # Issue #29: no name-based exclusion; the key goes to the student.
+        colors = self.colors_of('  canvas: "#ffffff"\n  ink: "#111111"\n'
+                                '  primary: "#111111"\n'
+                                '  warning: "#b45309"\n')
+        out, src = map_tokens(colors, self.text)
+        self.assertEqual((out["--acc"], src), ("#b45309", "warning"))
 
     def test_fallback_accent_passes_near_black_and_near_white_paper(self):
         for paper in ("#000000", "#262626", "#f0f2f5", "#ffffff"):

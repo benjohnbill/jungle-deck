@@ -19,7 +19,7 @@ Read these first:
 ## Steps
 
 1. **`design_md` is set.** Ask "이번에도 이 스타일로 갈까요?".
-   Yes: map that DESIGN.md with "Token mapping" below, confirm the accent (step 4, accent only), and go to step 5.
+   Yes: map that DESIGN.md with "Token mapping" below, confirm the accent with step 4.3 (and 4.4), and go to step 5.
    No: go to step 2.
 2. **Ask for a reference.** Ask both questions in one message:
    "원하는 디자인 레퍼런스가 있어요? (사이트 URL, 이미지, DESIGN.md)" and
@@ -37,7 +37,9 @@ Read these first:
 4. **Previews, then the accent.**
    1. Write two or three previews to `<save folder>/previews/<name>.html`. Each is a copy of `templates/stage.html` with only the `:root` tokens changed.
    2. Give the student the paths. The student picks one.
-   3. Propose the accent: `accent` from local.md when it is set, else two or three candidates from the picked source. Recommend one. The student confirms.
+   3. Confirm the accent.
+      A DESIGN.md source, or `accent` set in local.md: ask the one message in step 3 of "Accent rule".
+      Another source (a URL, an image, a frontend-slides pick, a preset) with no `accent` in local.md: propose two or three candidates from it and recommend one. The student picks one. Its `Accent key` is `none`.
    4. When `accent` is missing from local.md (not empty), ask "이 강조색을 다음 발표에도 쓸까요?". Write the accent on yes, `""` on no (D16).
 5. **Record and confirm.** Fill the `Design` section of `BRIEF.md` (see "The Design section"). Ask "이 디자인으로 발표 자료를 만들까요?". Set `phase: build` only after the student says yes.
 
@@ -87,8 +89,20 @@ For each token, read the `colors:` keys in order. The first key that is present 
 **Accent rule.** The accent sits on the page. Measure it against the mapped `--paper` value (`paper`). The accent fails when `primary` is missing, equals `ink`, or has a contrast below 3:1 against `paper` (WCAG contrast ratio). Then:
 
 1. Search the colors in this order: `link`, `link-*`, `brand-*`, `accent*`, then every other color in file order. Take the first color that passes all three tests: saturated (HSL saturation 0.4 or more, lightness 0.2 to 0.8), not equal to `ink`, and a contrast of 3:1 or more against `paper`.
-2. No color passes: use `#3b82f6`. This mid blue keeps 3:1 against a near-black and a near-white paper. On a mid-tone paper, `#3b82f6` can also fall below 3:1 (`nintendo-2001`). Tell the student when you show it.
-3. Ask the student to confirm the accent. Show the color you took and the key it came from.
+2. No color passes: use `#3b82f6`. This mid blue keeps 3:1 against a near-black and a near-white paper. On a mid-tone paper, `#3b82f6` can also fall below 3:1 (`nintendo-2001`); step 3 tells the student.
+3. Ask the student to confirm the accent, with its **source key** next to the color. This is the one accent message; step 4.3 points here. Fill `<from>` from the table:
+   "강조색은 `<color>`이고, <from>에서 가져왔어요. 이 색으로 갈까요, 다른 색을 고를까요?"
+
+   | The accent came from | `<from>` | `Accent key` in BRIEF |
+   |---|---|---|
+   | `primary` (it passed) | DESIGN.md의 `primary` | `primary` |
+   | A replacement (step 1) | DESIGN.md의 `<key>` | the key, for example `warning` |
+   | No color passes (step 2) | 기본값 | `fallback` |
+   | `accent` in local.md | 지난 발표 설정 | `local.md (<key>)`: the key in this DESIGN.md with the same color; `local.md` when no key matches |
+
+   For the fallback, when `#3b82f6` has a contrast below 3:1 against `paper`, add "이 배경에서는 기본값도 잘 안 보일 수 있어요." to the same message.
+   The student can confirm it or pick another color. To pick another, list the other colors that pass the three tests in step 1, each with its key. Record the key of the color the student picks; a color that is not in the file gets `none`.
+   The key tells the student what the color means in the source (`warning`, `error`, `trading-down`); the student judges it. A list of excluded key names only moves the pick to another meaning color (`negative`, `info`), so the student's confirmation is the guard.
 
 **Fonts.** Take the font family only, from the body and display entries of `typography:`.
 Append a Korean font to each stack (`'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`). A paid or proprietary family (for example `sohne-var`) falls back to a system font in the browser: say so to the student in one line.
@@ -98,8 +112,9 @@ Keep the template's `clamp()` sizes. Take only `fontWeight`, `letterSpacing`, an
 
 ## The Design section
 
-Write these three lines in the `Design` section of `BRIEF.md`. `build` reads the style only from here (D9).
+Write these four lines in the `Design` section of `BRIEF.md`. `build` reads the style only from here (D9).
 
 - `Source`: the student's DESIGN.md path, the reference URL or image, `getdesign.md/<brand>`, the frontend-slides pick, or the vendored preset name. `publish` branches on this value (D14).
 - `Tokens`: the six token values and the two font stacks, as written to `:root`. Mark each fallback (template value or `color-mix()`).
-- `Accent`: the confirmed accent and where it came from.
+- `Accent`: the confirmed accent color.
+- `Accent key`: its source key, from the table in step 3 of "Accent rule": a DESIGN.md `colors:` key, `fallback`, or `local.md (<key>)`. `none` when the color has no key (step 4.3, or a color the student gives that is not in the file).

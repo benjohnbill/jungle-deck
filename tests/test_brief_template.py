@@ -101,7 +101,7 @@ class BriefTemplateTest(unittest.TestCase):
 
     def test_design_section_records_source_tokens_accent(self):
         design = section(self.body, "Design")
-        for item in ["Source", "Tokens", "Accent"]:
+        for item in ["Source", "Tokens", "Accent", "Accent key"]:
             self.assertRegex(design, rf"(?m)^- {item}:")
 
     def test_story_frame_asks_structure_and_opening(self):

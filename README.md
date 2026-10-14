@@ -81,7 +81,7 @@ and recommends one; what it records is your pick or your rewrite.
 | With a saved DESIGN.md: "이번에도 이 스타일로 갈까요?" | Reuse it, or pick a new style |
 | "원하는 디자인 레퍼런스가 있어요? (사이트 URL, 이미지, DESIGN.md)" and "getdesign.md 레퍼런스 중에서 고를까요?" | A reference, a getdesign.md brand, or neither (then `frontend-slides` styles or presets) |
 | Two or three previews in `previews/` | One preview |
-| Accent candidates | The accent; the first time, also whether to keep it for next time |
+| The accent with the DESIGN.md key it came from: "강조색은 `<color>`이고, DESIGN.md의 `<key>`에서 가져왔어요. 이 색으로 갈까요, 다른 색을 고를까요?" | Keep it or pick another; the first time, also whether to keep it for next time |
 | "이 디자인으로 발표 자료를 만들까요?" | Move on to `build` |
 
 ### build — the first draft
