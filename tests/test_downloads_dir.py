@@ -70,15 +70,15 @@ class Detect(unittest.TestCase):
         self.assertEqual(self.detect("Windows"), HOME / "Downloads")
 
     def test_wsl_uses_wslvar_then_wslpath(self):
-        run = fake_run({"wslvar": "C:\\Users\\Student\r\n", "wslpath": "/mnt/c/Users/Student\n"})
+        run = fake_run({"wslvar": "C:\\Users\\Student\r\n", "wslpath": "/mnt/d/Users/Student\n"})
         got = downloads_dir.detect("WSL", {"USER": "student"}, HOME, run)
-        self.assertEqual(got, Path("/mnt/c/Users/Student/Downloads"))
+        self.assertEqual(got, Path("/mnt/d/Users/Student/Downloads"))
         self.assertEqual(run.calls[-1], ["wslpath", "-u", "C:\\Users\\Student"])
 
     def test_wsl_falls_back_to_cmd_exe(self):
-        run = fake_run({"cmd.exe": "C:\\Users\\Student\r\n", "wslpath": "/mnt/c/Users/Student\n"})
+        run = fake_run({"cmd.exe": "C:\\Users\\Student\r\n", "wslpath": "/mnt/d/Users/Student\n"})
         got = downloads_dir.detect("WSL", {}, HOME, run)
-        self.assertEqual(got, Path("/mnt/c/Users/Student/Downloads"))
+        self.assertEqual(got, Path("/mnt/d/Users/Student/Downloads"))
 
     def test_wsl_unexpanded_variable_is_no_answer(self):
         run = fake_run({"cmd.exe": "%USERPROFILE%\r\n", "wslpath": "/mnt/c/x\n"})
@@ -109,8 +109,8 @@ class Cli(unittest.TestCase):
         return code, out.getvalue(), err.getvalue()
 
     def test_prints_the_folder(self):
-        code, out, err = self.run_main(Path("/mnt/c/Users/Student/Downloads"))
-        self.assertEqual((code, out.strip(), err), (0, "/mnt/c/Users/Student/Downloads", ""))
+        code, out, err = self.run_main(Path("/mnt/d/Users/Student/Downloads"))
+        self.assertEqual((code, out.strip(), err), (0, "/mnt/d/Users/Student/Downloads", ""))
 
     def test_no_folder_exits_non_zero_and_says_ask(self):
         code, out, err = self.run_main(None)

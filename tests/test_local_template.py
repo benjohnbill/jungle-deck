@@ -1,4 +1,4 @@
-"""Checks reference/local-template.md against SPEC.md D15, D16, and D20.
+"""Checks reference/local-template.md against SPEC.md D15, D16, D20, D24.
 
 Run: python3 -m unittest discover -s tests
 """
@@ -11,17 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "reference" / "local-template.md"
 
 # D16, in the order the spec lists them.
-REQUIRED_FIELDS = [
-    "display name",
-    "week-repo root",
-    "Pages repo path",
-    "Pages URL base",
-    "card format",
-    "DESIGN.md path",
-    "preferred accent",
-    "downloads folder",
-    "Python command",
-]
+KEYS = ["display_name", "notes_url", "design_md", "accent", "downloads_dir",
+        "python_cmd", "current_brief", "prev_brief", "pages_repo", "pages_dir",
+        "pages_url_base", "card_format"]
 EMPTY = {"", "-", "—", "none", "n/a"}
 
 
@@ -52,13 +44,17 @@ def strip_code(cell):
     return cell.strip().strip("`").strip()
 
 
-def front_matter_keys(text):
-    """Keys of the YAML front matter inside the first ```yaml block."""
-    m = re.search(r"```yaml\n---\n(.*?)\n---\n```", text, re.S)
-    if not m:
+def yaml_blocks(text):
+    """Key -> value maps of each ```yaml block with a --- front matter."""
+    out = [{k: v.strip() for k, v in re.findall(r"(?m)^([a-z_]+):(.*)$", m.group(1))}
+           for m in re.finditer(r"```yaml\n---\n(.*?)\n---\n```", text, re.S)]
+    if not out:
         raise AssertionError("no ```yaml block with a --- front matter")
-    return [re.match(r"([a-z_]+):", l).group(1)
-            for l in m.group(1).splitlines() if re.match(r"[a-z_]+:", l)]
+    return out
+
+
+def flat(text):
+    return re.sub(r"\s+", " ", text)
 
 
 class LocalTemplate(unittest.TestCase):
@@ -67,16 +63,8 @@ class LocalTemplate(unittest.TestCase):
         cls.text = TEMPLATE.read_text(encoding="utf-8")
         cls.rows = table_rows(section(cls.text, "Fields"))
 
-    def test_every_d16_field_has_a_row(self):
-        names = [r["field"].lower() for r in self.rows]
-        for field in REQUIRED_FIELDS:
-            self.assertIn(field.lower(), names)
-
-    def test_keys_are_unique_snake_case(self):
-        keys = [strip_code(r["key"]) for r in self.rows]
-        self.assertEqual(len(keys), len(set(keys)))
-        for k in keys:
-            self.assertRegex(k, r"^[a-z][a-z0-9_]*$")
+    def test_fields_table_has_exactly_the_d16_keys(self):
+        self.assertEqual([strip_code(r["key"]) for r in self.rows], KEYS)
 
     def test_every_field_has_a_default_or_a_skip_meaning(self):
         for r in self.rows:
@@ -85,25 +73,48 @@ class LocalTemplate(unittest.TestCase):
             self.assertTrue(default not in EMPTY or skip not in EMPTY,
                             f"{r['key']}: no default and no skip meaning")
 
+    def test_every_field_says_when_it_is_asked_or_written(self):
+        for r in self.rows:
+            self.assertNotIn(r["asked or written"].strip().lower(), EMPTY, r["key"])
+
     def test_no_pages_repo_stops_at_local_html(self):
-        row = next(r for r in self.rows if r["field"].lower() == "pages repo path")
+        row = next(r for r in self.rows if strip_code(r["key"]) == "pages_repo")
         self.assertIn("local html", row["if empty"].lower())
 
     def test_template_block_has_exactly_the_table_keys(self):
-        keys = [strip_code(r["key"]) for r in self.rows]
-        self.assertEqual(front_matter_keys(self.text), keys)
+        self.assertEqual(list(yaml_blocks(self.text)[0]), KEYS)
 
-    def test_first_run_questions_each_name_a_key_and_a_default(self):
-        rows = table_rows(section(self.text, "First-run questions"))
-        keys = {strip_code(r["key"]) for r in self.rows}
-        self.assertTrue(0 < len(rows) <= 7)
-        for q in rows:
-            self.assertIn(strip_code(q["writes"]), keys)
-            self.assertNotIn(q["default answer"].strip().lower(), EMPTY)
+    def test_first_run_asks_only_name_and_notes_site(self):
+        body = section(self.text, "First-run questions")
+        self.assertEqual([strip_code(q["writes"]) for q in table_rows(body)],
+                         ["display_name", "notes_url"])
+        self.assertRegex(flat(body), r'(?i)both may be `""`')
 
-    def test_author_values_are_not_defaults(self):
-        for r in self.rows:
-            self.assertNotIn("benjohnbill", r["default"])
+    def test_missing_versus_empty_rule(self):
+        body = flat(section(self.text, "When to read and write it"))
+        self.assertRegex(body, r"(?i)missing[^.]*asked once when it is first needed")
+        self.assertRegex(body, r'(?i)empty value `""` is a valid answer[^.]*never asked again')
+
+    def test_old_keys_are_ignored(self):
+        body = flat(section(self.text, "Migration"))
+        self.assertIn("`last_brief`", body)
+        self.assertRegex(body, r"(?i)not in the Fields table[^.]*ignored")
+        self.assertRegex(body, r"(?i)keeps working")
+
+    def test_current_brief_moves_to_prev_brief_on_create(self):
+        self.assertRegex(flat(self.text), r"(?i)old `current_brief`[^.]*`prev_brief`")
+
+    def test_example_is_generic(self):
+        examples = yaml_blocks(self.text)[1:]
+        self.assertTrue(examples, "no example block")
+        ex = examples[0]
+        self.assertEqual(ex["display_name"], "홍길동")
+        self.assertEqual(ex["pages_repo"], "~/my-pages")
+        self.assertEqual(ex["downloads_dir"], "~/Downloads")
+
+    def test_card_badge_says_presentation(self):
+        self.assertNotIn('class="b">덱<', self.text)
+        self.assertIn('class="b">발표 자료<', self.text)
 
     def test_local_file_is_gitignored(self):
         lines = (ROOT / ".gitignore").read_text().splitlines()

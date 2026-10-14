@@ -24,7 +24,7 @@ DECK = b"<!doctype html><title>sample</title><section id='s1'>hi</section>\n"
 
 
 def write_local(path, **values):
-    keys = ["display_name", "week_repo_root", "pages_repo", "pages_url_base",
+    keys = ["display_name", "pages_repo", "pages_url_base",
             "card_format", "design_md", "accent"]
     lines = ["---"] + [f'{k}: "{values.get(k, "")}"' for k in keys] + ["---",
              "Personal settings for jungle-deck."]

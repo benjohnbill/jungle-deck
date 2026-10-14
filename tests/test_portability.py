@@ -31,9 +31,6 @@ class NoWslDefault(unittest.TestCase):
     def test_no_mnt_c_in_scripts_or_docs(self):
         for f in [*sorted((ROOT / "scripts").glob("*.py")), *DOCS]:
             text = f.read_text(encoding="utf-8")
-            if f == TEMPLATE:
-                # One student's values, labelled as an example, not a default.
-                text = text.replace(section(text, "Example (the author's values)"), "")
             with self.subTest(file=f.name):
                 self.assertNotIn("/mnt/c", text)
 
@@ -68,11 +65,13 @@ class PythonCheck(unittest.TestCase):
 
 
 class DownloadsDir(unittest.TestCase):
-    def test_first_run_offers_the_detected_folder(self):
+    def test_fallback_offers_the_detected_folder(self):
+        # D16: asked the first time the export fallback runs, not on the first run
         text = TEMPLATE.read_text(encoding="utf-8")
-        questions = section(text, "First-run questions")
-        self.assertIn("`downloads_dir`", questions)
-        self.assertIn("scripts/downloads_dir.py", questions)
+        row = next(l for l in section(text, "Fields").splitlines() if "`downloads_dir`" in l)
+        self.assertIn("scripts/downloads_dir.py", row)
+        self.assertRegex(row, r"(?i)first time the (export )?fallback runs")
+        self.assertNotIn("`downloads_dir`", section(text, "First-run questions"))
 
     def test_readme_names_the_python_requirement(self):
         self.assertIn("Python 3.8", (ROOT / "README.md").read_text(encoding="utf-8"))

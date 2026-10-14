@@ -37,8 +37,8 @@ class ReadmeTest(unittest.TestCase):
         self.text = (ROOT / "README.md").read_text()
 
     def test_states_install_by_clone(self):
-        self.assertIn("git clone https://github.com/benjohnbill/jungle-deck "
-                      "~/.claude/skills/jungle-deck", self.text)
+        self.assertRegex(self.text, r"git clone https://github\.com/[\w.-]+/jungle-deck "
+                                    r"~/\.claude/skills/jungle-deck")
 
     def test_states_first_run(self):
         self.assertRegex(self.text, r"(?im)^#+\s*first run")

@@ -7,7 +7,7 @@ on top of `frontend-slides`. The design is in `SPEC.md`.
 
 ### Issue tracker
 
-Issues live in GitHub Issues of benjohnbill/jungle-deck, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in this repository's GitHub Issues, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

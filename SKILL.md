@@ -26,18 +26,11 @@ before step 2.
 Done when `jungle-deck.local.md` exists, you have read it, and
 `python_cmd` holds a working command.
 
-### 2. Find the deck
+### 2. Find the BRIEF
 
-1. Find the week repo: the current git repo when it is a `weekNN/` repo.
-   Else, look under `week_repo_root` from local.md and ask which week.
-2. List `study/*/BRIEF.md` in the week repo.
-3. Pick the deck:
-   - The student names a topic or a slug: use that deck.
-   - One BRIEF.md with `phase` other than `done`: use it.
-   - More than one: ask which deck, as a numbered list.
-   - No BRIEF.md, or the student asks for a new deck: make a new deck.
-     Ask for the slug, create the folder, and copy the skeleton from
-     `reference/brief-template.md`.
+Follow "How to resume" in `reference/brief-template.md`: it gives the
+search order, the `kind: jungle-deck` check, the old-format migration, and
+the save-folder question for a new presentation.
 
 Done when you hold one BRIEF.md path.
 
