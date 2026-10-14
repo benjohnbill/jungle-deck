@@ -129,6 +129,9 @@ layout, sites, or habits. The author's personal style file is not shipped.
 - **Section ids.** A posted id must match `[\w.:-]+` so it cannot forge a
   log line; a bad id gets 400 and the payload is kept in
   `_backup/rejected-*` (#30).
+- **Non-breaking spaces (#33).** A save turns editor-made non-breaking
+  spaces into spaces, but one the source section already has (matched by
+  its left and right neighbors) survives.
 - **Restore signal (#30).** After a 2xx or a kept 409, the page stores the
   sent sections in localStorage. On load and on each detected change it
   compares their words (whitespace removed) and size steps with the file.
