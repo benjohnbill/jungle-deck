@@ -36,7 +36,7 @@ the folder, with these lines: `_backup/`, `previews/`, `.impeccable/`,
 
 Then fill the front matter:
 
-- `kind: jungle-deck` marks the file. Only a file with this line is a BRIEF.
+- `kind: jungle-deck` marks the file. A file without it is a BRIEF only in the old format (see "How to resume").
 - `deck` is relative to the save folder: `<slug>.html`.
 - `source_repo` is the git repo of the directory where the skill was called
   (`git rev-parse --show-toplevel`). It can differ from the save folder (D8).

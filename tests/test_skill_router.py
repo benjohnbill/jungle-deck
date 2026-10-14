@@ -1,5 +1,5 @@
-"""Contract checks for SKILL.md, the router (SPEC D2, D4, D6, D15, D16, D19;
-issue #10).
+"""Contract checks for SKILL.md, the router (SPEC D2, D3, D4, D5, D6, D15,
+D16, D19, D23; issues #10, #23).
 
 Run: python3 -m unittest discover -s tests
 """
@@ -10,8 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SKILL = ROOT / "SKILL.md"
 
-# D2, verbatim.
-TRIGGERS = ["발표 덱", "발표 준비", "슬라이드 만들자", "jungle-deck 이어서", "덱 게시"]
+# D2, verbatim: the new phrases and the old ones that still trigger.
+TRIGGERS = ["발표 자료 만들자", "발표 준비", "슬라이드 만들자", "jungle-deck 이어서",
+            "발표 자료 게시", "발표 덱", "덱 게시"]
 
 
 def split_front_matter(text):
@@ -48,6 +49,7 @@ class FrontMatterTest(unittest.TestCase):
 # routes to the BRIEF template, because the next step is a new deck.
 PHASE_FILES = {
     "grill": "reference/grill.md",
+    "design": "reference/design.md",
     "build": "reference/build.md",
     "revise": "reference/revise.md",
     "publish": "reference/publish.md",
@@ -72,6 +74,20 @@ class RoutingTest(unittest.TestCase):
         self.assertIsNotNone(read, "no step says to read BRIEF.md")
         first_route = self.body.find(PHASE_FILES["build"])
         self.assertLess(read.start(), first_route)
+
+    def test_phase_rows_follow_the_d3_order(self):
+        order = [self.body.find(f"| `{p}` |") for p in
+                 ("grill", "design", "build", "revise", "publish", "done")]
+        self.assertNotIn(-1, order, order)
+        self.assertEqual(order, sorted(order))
+
+    def test_resume_points_to_brief_template_hooks(self):
+        find_brief = re.search(r"(?ms)^### 2\. Find the BRIEF\n(.*?)(?=^### )",
+                               self.body).group(1)
+        for hook in ("How to resume", "kind: jungle-deck", "current_brief",
+                     "prev_brief", "Migration from the old format"):
+            with self.subTest(hook=hook):
+                self.assertIn(hook, find_brief)
 
     def test_no_brief_starts_at_grill(self):
         self.assertRegex(
@@ -104,6 +120,9 @@ FALLBACKS = {
     "grilling": "reference/grill.md",
     "frontend-slides": "vendor/frontend-slides/",
     "claude-mem": "skip",
+    "gh": "REST API",
+    "Revise server": "scripts/pull_edits.py",
+    "Monitor": "tells you after each save",
     "Pages": "local HTML",
 }
 
@@ -142,6 +161,7 @@ class DependencyTest(unittest.TestCase):
         # publish.py copy fails on a pages_repo with no .git (a typo).
         row = " ".join(next(r for r in self.rows if "Pages" in r[0]))
         self.assertRegex(row, r"(?i)`pages_repo` in local\.md is (empty|not empty)")
+        self.assertRegex(row, r"(?i)yes to a GitHub Pages deploy")
         self.assertRegex(row, r"(?i)no `\.git`[^|]*error")
         self.assertRegex(row, r"(?i)not the fallback")
 
@@ -154,22 +174,26 @@ class VerificationStateTest(unittest.TestCase):
         self.text = section(body, "Verification state")
         self.flat = " ".join(self.text.split())
 
-    def test_revise_and_publish_first_on_a_nearly_finished_deck(self):
+    def test_revise_and_publish_first_on_a_nearly_finished_presentation(self):
         self.assertRegex(
             self.flat,
-            r"`revise` and `publish`[^.]*first verified on the first real deck "
-            r"\(a nearly finished one\)")
+            r"`revise` and `publish`[^.]*first verified on a nearly finished presentation")
 
     def test_names_no_personal_deck(self):
         for personal in ("bsize", "week06", "T11"):
             self.assertNotIn(personal, self.text)
 
-    def test_grill_and_build_first_on_the_next_new_deck(self):
+    def test_grill_design_build_first_on_the_next_new_presentation(self):
         self.assertRegex(
-            self.flat, r"`grill` and `build`[^.]*first verified on the next new deck")
+            self.flat, r"`grill`, `design`, and `build`[^.]*first verified on the next "
+                       r"new presentation")
 
-    def test_no_phase_verified_yet(self):
-        self.assertRegex(self.flat, r"No phase has been verified on a real deck yet")
+    def test_every_phase_is_an_unverified_draft(self):
+        self.assertRegex(self.flat, r"every phase is an unverified draft")
+        self.assertRegex(self.flat, r"No phase has been verified on a real presentation yet")
+
+    def test_passed_manual_checks_go_to_the_phase_files(self):
+        self.assertRegex(self.flat, r"When a manual check passes, record it in its phase file")
 
 
 REPO_DIRS = ("reference/", "templates/", "scripts/", "vendor/", "tests/")
@@ -184,6 +208,23 @@ def words(text):
 def shingles(text, n=SHINGLE):
     w = words(text)
     return {" ".join(w[i:i + n]) for i in range(len(w) - n + 1)}
+
+
+class WordsTest(unittest.TestCase):
+    """SPEC "Words": user-facing speech says 발표 자료; old phrases still trigger."""
+
+    def setUp(self):
+        _, body = split_front_matter(SKILL.read_text())
+        self.text = section(body, "Words")
+
+    def test_names_the_user_facing_word_and_the_old_phrases(self):
+        for word in ("발표 자료", "발표 덱", "덱 게시", "도입, 전개, 전환, 마무리"):
+            with self.subTest(word=word):
+                self.assertIn(word, " ".join(self.text.split()))
+
+    def test_no_stale_week_repo_paths(self):
+        # The save folder replaced the week repo (D5).
+        self.assertNotIn("week repo", SKILL.read_text())
 
 
 class RouterOnlyTest(unittest.TestCase):

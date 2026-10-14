@@ -1,16 +1,25 @@
 ---
 name: jungle-deck
-description: "Presentation deck for the weekly Krafton Jungle talk: settles the story with the student, builds a 2-minute HTML slide deck from this week's real debugging evidence, merges the student's browser edits, and publishes it to GitHub Pages. Resumes from BRIEF.md. Use when the student starts a deck (\"발표 덱\", \"발표 준비\", \"슬라이드 만들자\"), resumes one (\"jungle-deck 이어서\"), or publishes one (\"덱 게시\")."
+description: "Presentation (발표 자료) for the weekly Krafton Jungle talk: settles the story and the design with the student, builds a 2-minute HTML slide page from the student's real run output, merges the student's browser saves through a local server, and publishes it to GitHub Pages. Resumes from BRIEF.md. Use when the student starts one (\"발표 자료 만들자\", \"발표 준비\", \"슬라이드 만들자\", or the old \"발표 덱\"), resumes one (\"jungle-deck 이어서\"), or publishes one (\"발표 자료 게시\", or the old \"덱 게시\")."
 ---
 
 # jungle-deck
 
-A router. It finds the deck, reads its state, and hands the work to one
-phase file. The phase files hold the rules; this file holds none of them.
+A router. It finds the presentation, reads its state, and hands the work to
+one phase file. The phase files hold the phase rules. This file holds the
+routing and one rule for every phase: "Words".
 
 All paths below are relative to the skill directory (the directory of this
-file). `BRIEF.md` is the one exception: it lives in the deck folder,
-`<week repo>/study/<deck-slug>/`.
+file). `BRIEF.md` is the one exception: it lives in the save folder of the
+presentation, which the student chose when it was created.
+
+## Words
+
+The student hears Korean, and the thing is "발표 자료" in every question,
+message, and suggested phrase. "덱" and "deck" stay in English documents,
+file names, and code keys only. Story stages use the Korean words 도입,
+전개, 전환, 마무리 (SPEC "Words": no Hanja). The old phrases "발표 덱" and "덱 게시" still start the skill;
+answer them in the new words.
 
 ## Steps
 
@@ -20,7 +29,8 @@ Read `jungle-deck.local.md` in the skill directory. When
 `jungle-deck.local.md` is missing, this is the first run: run the Python
 check, then ask the first-run questions, both in
 `reference/local-template.md`, then write the file from its template.
-Run the Python check also when `python_cmd` is empty or fails. Do this
+Run the Python check also when `python_cmd` is empty or fails. An older
+file keeps working: apply "Migration" in the same reference. Do this
 before step 2.
 
 Done when `jungle-deck.local.md` exists, you have read it, and
@@ -28,28 +38,35 @@ Done when `jungle-deck.local.md` exists, you have read it, and
 
 ### 2. Find the BRIEF
 
-Follow "How to resume" in `reference/brief-template.md`: it gives the
-search order, the `kind: jungle-deck` check, the old-format migration, and
-the save-folder question for a new presentation.
+Follow "How to resume" in `reference/brief-template.md`. It holds these
+hooks; do each one there:
 
-Done when you hold one BRIEF.md path.
+- the search order and the `kind: jungle-deck` check;
+- "Migration from the old format" (D23);
+- a new presentation: the save folder, the skeleton, and the
+  `current_brief` and `prev_brief` updates in local.md.
+
+Done when you hold one BRIEF.md path, already migrated, or you started a
+new one from the skeleton.
 
 ### 3. Read BRIEF.md and dispatch
 
-Read `BRIEF.md` first, before any other deck file. If no BRIEF.md exists,
-start at `grill` (D6). Else read `phase` from its front matter and its
-`Next action` section. Then read the phase file and follow it:
+Read `BRIEF.md` first, before any other file of the presentation. A new
+BRIEF.md has `phase: grill`: with no BRIEF.md, you start at `grill` (D6). Read `phase` from its front
+matter and its `Next action` section. Then read the phase file and follow
+it:
 
 | `phase` | Phase file |
 |---|---|
 | `grill` | `reference/grill.md` (it also reads `reference/context.md`) |
-| `build` | `reference/build.md` |
-| `revise` | `reference/revise.md` |
-| `publish` | `reference/publish.md` |
-| `done` | Nothing to run. Give the live URL from the `Publish` section. For the next deck, go back to step 2 with `reference/brief-template.md` |
+| `design` | `reference/design.md` |
+| `build` | `reference/build.md` (its finish starts the revise server) |
+| `revise` | `reference/revise.md` (server, save loop, file fallback) |
+| `publish` | `reference/publish.md` (its own numbered steps, commit to live check) |
+| `done` | Nothing to run. Give the live URL from the `Publish` section. For a new presentation, follow "How to resume" step 3 in `reference/brief-template.md` |
 
-The resume and `phase` rules are in `reference/brief-template.md`
-("How to resume", "Who changes `phase`"). Follow them at every phase.
+A BRIEF at `design` or later skips grilling (D6). Moving `phase` follows
+"Who changes `phase`" in `reference/brief-template.md`, at every phase.
 
 ## Dependencies
 
@@ -60,20 +77,27 @@ the phase; the fallback is complete.
 | Dependency (phase) | Detect | Fallback |
 |---|---|---|
 | `grilling` skill (grill) | The session's skill list names `grilling` | The inline rules in `reference/grill.md`, section "Grilling rules" |
-| `frontend-slides` skill (build) | The skill list names `frontend-slides`, also as `frontend-slides:frontend-slides` | The vendored copies in `vendor/frontend-slides/` (MIT, upstream in `vendor/frontend-slides/SOURCE.md`) |
-| `claude-mem` (grill, context) | A `claude-mem:mem-search` skill or an `mcp__plugin_claude-mem_*` search tool is available | Silently skip it as a context source |
-| Pages settings (publish) | `pages_repo` in local.md is not empty | Stop after a finished local HTML: commit in the week repo, print the deck path. A `pages_repo` that is set but has no `.git` is an error, not the fallback: `scripts/publish.py copy` stops and names `pages_repo`. Ask the student to fix the path |
+| `frontend-slides` skill (design, build) | The skill list names `frontend-slides`, also as `frontend-slides:frontend-slides` | The vendored copies in `vendor/frontend-slides/` (MIT, upstream in `vendor/frontend-slides/SOURCE.md`) |
+| `claude-mem` (grill) | A `claude-mem:mem-search` skill or an `mcp__plugin_claude-mem_*` search tool is available | Silently skip it as a context source |
+| `gh` (grill, publish) | `gh auth status` succeeds | Public REST API for a public repo, no Project board (`reference/grill.md`); ask for the Pages source folder (`reference/publish.md`) |
+| Revise server (revise) | `scripts/serve.py` starts and the student's browser reaches its address | File export and `scripts/pull_edits.py`: "Fallback: no server" in `reference/revise.md` |
+| `Monitor` tool (revise) | The session's tool list has `Monitor` | The student tells you after each save |
+| Pages target (publish) | The student says yes to a GitHub Pages deploy, and `pages_repo` in local.md is not empty after the setup step | Stop after a finished local HTML and print its path. A `pages_repo` that is set but has no `.git` is an error, not the fallback: `scripts/publish.py copy` stops and names `pages_repo`. Ask the student to fix the path |
 
 ## Verification state
 
-As of 2026-10-07: No phase has been verified on a real deck yet. The
-phase files pass their contract tests in `tests/` only (D19).
+As of 2026-10-15: every phase is an unverified draft after the revision
+(D19). The phase files pass their contract tests in `tests/` only. No phase
+has been verified on a real presentation yet.
 
-- `revise` and `publish` are first verified on the first real deck (a
-  nearly finished one).
-- `grill` and `build` are first verified on the next new deck.
+- `revise` and `publish` are first verified on a nearly finished
+  presentation.
+- `grill`, `design`, and `build` are first verified on the next new
+  presentation.
 
 While a phase is unverified, treat its phase file as a draft. When a step
-fails or does not fit the deck, stop, tell the student what failed, and
-write it into `Next action` of BRIEF.md. Do not invent a replacement step.
-After a phase works end to end on a real deck, update this section.
+fails or does not fit the presentation, stop, tell the student what
+failed, and write it into `Next action` of BRIEF.md. Do not invent a
+replacement step. When a manual check passes, record it in its phase
+file. When a phase works end to end on a real presentation, update this
+section.
