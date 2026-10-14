@@ -77,7 +77,7 @@ class GetTest(Served):
         self.assertEqual(status, 200)
         m = re.search(rb'<meta name="jd-base" content="([0-9a-f]+)">', body)
         self.assertTrue(m, "no jd-base meta")
-        self.assertNotIn("jd-base", self.deck.read_text(encoding="utf-8"))
+        self.assertNotIn('<meta name="jd-base"', self.deck.read_text(encoding="utf-8"))
         status, v = self.get("/version")
         self.assertEqual(status, 200)
         v = json.loads(v)

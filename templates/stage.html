@@ -29,7 +29,9 @@
     N                    : toggle the speaker-notes panel
     ?                    : shortcut overlay (Esc or ? closes it)
     E (or top-left corner): edit mode; click slide text or notes to change it
-    Ctrl+S               : download the edited deck as an HTML file (Esc leaves the caret)
+    Ctrl+S               : save. Served by scripts/serve.py: write the changed slides
+                           into the source file. Opened as a file: download the deck
+    R                    : reload after an agent edit (only while its notice shows)
     Home / End           : first / last slide
     #3 at the end of the URL : open slide 3
 
@@ -38,7 +40,8 @@
     Notes : edit <aside class="notes" data-sec="15"> inside each <section>
             (hidden on the slide). Start a paragraph with <span class="st">▸2</span>
             to tie it to step 2.
-    Ids   : keep <section id="sN">; the merge-back script matches edits by it.
+    Ids   : keep <section id="sN">; saves, autosaves, and the merge-back script
+            match edits by it, never by position.
 -->
 
 <style>
@@ -386,7 +389,7 @@ body.edit-active .edit-banner { transform: none; }
 body.edit-active [data-step] { opacity: 1; visibility: visible; transform: none; }
 body.edit-active [contenteditable] { outline: 1px dashed var(--acc); outline-offset: 3px; }
 body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); background: var(--edit-bg); }
-/* Way back to the study index: ../../ from study/weekNN/<slug>.html. Bottom-right is the only corner the deck chrome leaves free */
+/* Way back to the study index. publish.py rewrites the href to one ../ per folder below pages_dir, or drops the link when pages_dir has no index.html. Bottom-right is the only corner the deck chrome leaves free */
 .home-link {
     position: fixed; right: clamp(.6rem,1.4vw,1.4rem); bottom: clamp(.4rem,1vh,.8rem); z-index: 9998;
     font-family: var(--font-mono, monospace); font-size: clamp(.55rem,1vh,.72rem);
@@ -423,6 +426,26 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
     font-size: var(--small-size); line-height: 1.5; word-break: keep-all;
     padding: .6em 1em; cursor: pointer;
 }
+
+/* ===========================================
+   10. Save and change notices (served mode, autosave)
+   =========================================== */
+#notices {
+    position: fixed; left: 50%; top: clamp(2.4rem, 6vh, 3.4rem); transform: translateX(-50%);
+    z-index: 10001; width: max-content; max-width: min(92vw, 720px);
+    display: flex; flex-direction: column; gap: .4em; pointer-events: none;
+}
+.notice {
+    pointer-events: auto;
+    background: var(--ink); color: var(--paper); box-shadow: 0 8px 24px var(--shadow);
+    border-left: .35em solid var(--acc);
+    font-size: var(--small-size); line-height: 1.5; word-break: keep-all;
+    padding: .55em 1em;
+}
+.notice button {
+    margin-left: .7em; padding: .1em .7em; border: 0; cursor: pointer;
+    font: inherit; font-weight: 600; background: var(--paper); color: var(--ink);
+}
 </style>
 </head>
 <body>
@@ -434,7 +457,7 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
 
 <div class="edit-hotzone" aria-hidden="true"></div>
 <button class="edit-toggle" id="editToggle" title="편집 모드 (E)" aria-label="편집 모드 켜기">✏️</button>
-<div class="edit-banner" id="editBanner">편집 모드 · 글자를 눌러 고치세요 · N 노트도 고칠 수 있어요 · Esc 커서 빼기 · Ctrl+S 파일 저장 · E 끄기</div>
+<div class="edit-banner" id="editBanner">편집 모드 · 글자를 눌러 고치세요 · N 노트도 고칠 수 있어요 · Esc 커서 빼기 · Ctrl+S 저장 · E 끄기</div>
 
 <!-- ============================================================
      01 · Title
@@ -528,12 +551,14 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
             <dt>Home · End</dt><dd>처음 · 마지막 슬라이드</dd>
             <dt>N</dt><dd>발표자 노트 열고 닫기</dd>
             <dt>E</dt><dd>편집 모드: 글자나 노트를 눌러 고치기</dd>
-            <dt>Ctrl+S</dt><dd>고친 발표 자료를 HTML 파일로 저장</dd>
+            <dt>Ctrl+S</dt><dd>저장: 에이전트가 연 주소면 원본 파일에, 파일로 열었으면 다운로드 폴더에</dd>
+            <dt>R</dt><dd>에이전트가 고친 뒤 새로고침 (알림이 떴을 때)</dd>
             <dt>?</dt><dd>이 도움말 열고 닫기 (Esc로도 닫힘)</dd>
         </dl>
         <p class="help-save">고친 뒤 저장하고 에이전트에게 말해 주세요.</p>
     </div>
 </div>
+<div id="notices" role="status" aria-live="polite"></div>
 <div id="firstHint" hidden role="status">? 키로 단축키를 볼 수 있어요 · 고친 뒤 저장하고 에이전트에게 말해 주세요.</div>
 
 <script>
@@ -544,11 +569,14 @@ const slides = Array.from(document.querySelectorAll('.slide'));
 const total = slides.length;
 
 /* ===========================================
-   In-browser editor: edits autosave to localStorage,
-   Ctrl+S downloads the deck as an HTML file
+   In-browser editor. Every slide is kept by its section id.
+   Served by scripts/serve.py: Ctrl+S writes the changed sections into the
+   source file (a three-way save against the jd-base hash). Opened as a
+   file: Ctrl+S downloads the deck. Edits autosave to localStorage.
    =========================================== */
 /* One key per deck file, so two decks on the same origin do not collide */
 const STORE = 'jungle-deck:' + location.pathname;
+const STASH = STORE + ':stash:';   /* + base hash: autosaves the file changed under */
 const EDITABLE = '.slide > .head span:not(.num), .slide > .foot span, '
                + '.slide-content :is(h1, h2, .kicker, p, th, td, .cap span)';
 
@@ -559,32 +587,284 @@ function scrub(root) {
     root.querySelectorAll('[class=""]').forEach(e => e.removeAttribute('class'));
     return root;
 }
-const slideHTML = () => slides.map(s => scrub(s.cloneNode(true)).innerHTML);
+/* One slide as it is saved: no edit traces, no runtime slide number */
+function sectionHTML(s) {
+    const c = scrub(s.cloneNode(true));
+    const num = c.querySelector('.head .num');
+    if (num) num.textContent = '';
+    return c.innerHTML;
+}
+const sectionsNow = () => Object.fromEntries(slides.map(s => [s.id, sectionHTML(s)]));
+/* Write sections by id, never by position: into the page, or into a copy */
+function applySections(map, els = slides) {
+    els.forEach(s => { if (s.id in map) s.innerHTML = map[s.id]; });
+}
 
-/* If the file itself changed, do not restore an older autosave */
+/* pure: begin */
+/* Save rules on {id: html} maps, no DOM. tests/test_stage_save.py runs this block in Node */
+function changed(base, current) {
+    const out = {};
+    for (const id in current) if (id in base && current[id] !== base[id]) out[id] = current[id];
+    return out;
+}
+/* Autosave record: changed sections only, each with the base it was edited from */
+function autosaveRecord(baseHash, base, current) {
+    const ids = Object.keys(changed(base, current));
+    if (!ids.length) return null;
+    const sections = {};
+    ids.forEach(id => { sections[id] = { base: base[id], current: current[id] }; });
+    return { base_hash: baseHash, sections };
+}
+/* At load: the same base puts the edits back by id; anything else is a stash */
+function restorePlan(saved, baseHash, now) {
+    const ids = Object.keys(saved.sections);
+    if (saved.base_hash !== baseHash || ids.some(id => !(id in now))) return { stash: true, apply: {} };
+    const apply = {};
+    ids.forEach(id => { apply[id] = saved.sections[id].current; });
+    return { stash: false, apply };
+}
+/* Restore (복원) without the server: a three-way merge in the page. A section takes the
+   stashed edit only while it still holds the base the edit was made from */
+function mergeStash(stash, now) {
+    const apply = {}, conflicts = [];
+    for (const id in stash.sections) {
+        const s = stash.sections[id];
+        if (now[id] === s.base) apply[id] = s.current;
+        else conflicts.push(id);
+    }
+    return { apply, conflicts: conflicts.sort() };
+}
+/* Restore with the server: a normal three-way save of the stash */
+function stashPayload(stash) {
+    const sections = {};
+    for (const id in stash.sections) sections[id] = stash.sections[id].current;
+    return { base_hash: stash.base_hash, sections };
+}
+/* pure: end */
+
+/* Served: serve.py puts the hash of the served version in a jd-base meta */
+const baseMeta = document.querySelector('meta[name="jd-base"]');
+const served = !!baseMeta && location.protocol.startsWith('http');
+/* base: every section as loaded, captured before any autosave restore */
+const base = sectionsNow();
+/* Opened as a file: a hash of the sections stands in for the server's hash */
 const signature = (() => {
-    const src = slideHTML().join('\u0000');
+    const src = Object.values(base).join('\u0000');
     let h = 5381;
     for (let i = 0; i < src.length; i++) h = ((h * 33) ^ src.charCodeAt(i)) >>> 0;
     return src.length + '-' + h.toString(36);
 })();
+let baseHash = served ? baseMeta.content : signature;
+const unsaved = () => Object.keys(changed(base, sectionsNow())).length > 0;
+
+/* Notices: one line each, by key; a later notice with the same key replaces it */
+const notices = document.getElementById('notices');
+function notice(key, text, actions) {
+    let n = notices.querySelector('[data-key="' + key + '"]');
+    if (!n) {
+        n = document.createElement('div');
+        n.className = 'notice';
+        n.dataset.key = key;
+        notices.appendChild(n);
+    } else if (!actions && n.textContent === text) return;   /* the poll repeats itself */
+    n.replaceChildren(text);
+    (actions || []).forEach(([label, fn]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.addEventListener('click', fn);
+        n.appendChild(b);
+    });
+}
+function clearNotice(key) {
+    const n = notices.querySelector('[data-key="' + key + '"]');
+    if (n) n.remove();
+}
+const STORAGE_FAILED = '자동 저장이 안 돼요 — 지금 Ctrl+S로 저장하세요';
+const SERVER_OFF = "서버가 꺼져 있어요. 에이전트에게 '서버 다시 켜줘'라고 말해 주세요";
 
 function saveLocal() {
-    try { localStorage.setItem(STORE, JSON.stringify({ sig: signature, data: slideHTML() })); } catch (e) {}
+    try {
+        const rec = autosaveRecord(baseHash, base, sectionsNow());
+        if (rec) localStorage.setItem(STORE, JSON.stringify(rec));
+        else localStorage.removeItem(STORE);
+        clearNotice('storage');
+    } catch (e) {
+        notice('storage', STORAGE_FAILED);
+    }
 }
+function dropStash(key) {
+    try { localStorage.removeItem(key); } catch (e) { notice('storage', STORAGE_FAILED); }
+    clearNotice(key);
+}
+
+/* The file changed under an autosave: keep it aside and offer it back */
+function showStash(key, stash) {
+    notice(key, '저장 안 된 편집이 있어요 (' + Object.keys(stash.sections).join(', ')
+                + ') — 그 뒤에 파일이 바뀌었어요', [
+        ['복원', () => restoreStash(key, stash)],
+        ['파일로 내보내기', () => exportFile(stashPayload(stash).sections)],
+        ['닫기', () => clearNotice(key)],   /* hides it until the next load; the stash stays */
+    ]);
+}
+async function restoreStash(key, stash) {
+    if (served) {
+        const payload = stashPayload(stash);
+        const r = await send(payload, false);
+        if (r && r.status < 300) {
+            applySections(payload.sections);
+            renderNotes();
+            saveLocal();
+        }
+        if (r && (r.status < 300 || (r.status === 409 && r.body.payload))) dropStash(key);
+        return;
+    }
+    const plan = mergeStash(stash, sectionsNow());
+    applySections(plan.apply);
+    renderNotes();
+    saveLocal();
+    if (!plan.conflicts.length) return dropStash(key);
+    const rest = { base_hash: stash.base_hash, sections: {} };
+    plan.conflicts.forEach(id => { rest.sections[id] = stash.sections[id]; });
+    try { localStorage.setItem(key, JSON.stringify(rest)); } catch (e) { notice('storage', STORAGE_FAILED); }
+    notice(key, '파일에서도 바뀐 슬라이드라 복원하지 못했어요 (' + plan.conflicts.join(', ')
+                + '). 파일로 내보내고 에이전트에게 말해 주세요', [
+        ['파일로 내보내기', () => exportFile(stashPayload(rest).sections)],
+        ['닫기', () => clearNotice(key)],
+    ]);
+}
+
 (function restoreLocal() {
     try {
         const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
-        if (!saved) return;
-        if (saved.sig !== signature) {
-            /* The file changed. Move the old autosave aside instead of deleting it */
+        if (saved && !saved.sections) {
+            /* An autosave from the older page (by position): keep it, never apply it */
             localStorage.setItem(STORE + ':stale', JSON.stringify(saved));
             localStorage.removeItem(STORE);
-            return;
+        } else if (saved) {
+            const plan = restorePlan(saved, baseHash, base);
+            if (plan.stash) {
+                const key = STASH + saved.base_hash;
+                const old = JSON.parse(localStorage.getItem(key) || 'null');
+                if (old) saved.sections = Object.assign(old.sections, saved.sections);
+                localStorage.setItem(key, JSON.stringify(saved));
+                localStorage.removeItem(STORE);
+            } else applySections(plan.apply);
         }
-        slides.forEach((s, i) => { if (saved.data[i]) s.innerHTML = saved.data[i]; });
-    } catch (e) {}
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith(STASH)) showStash(key, JSON.parse(localStorage.getItem(key)));
+        }
+    } catch (e) {
+        notice('storage', STORAGE_FAILED);
+    }
 })();
+
+/* ===========================================
+   Save: served -> POST /save; as a file -> download
+   =========================================== */
+const POLL_MS = 3000, POLL_SLOW_MS = 30000;
+let saving = false, conflicted = false, savedTimer = null;
+
+/* GET /version -> {slug, source, hash}, or null when the server did not answer */
+async function version() {
+    try {
+        const res = await fetch('/version', { cache: 'no-store' });
+        return res.ok ? await res.json() : null;
+    } catch (e) {
+        return null;
+    }
+}
+function flash(text) {
+    notice('saved', text);
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => clearNotice('saved'), 3000);
+}
+
+/* POST {base_hash, sections}. `own`: the sections come from this page's
+   autosave, not from a stash. Returns {status, body}; null when the server
+   did not answer; undefined while another save runs */
+async function send(payload, own) {
+    if (saving) return undefined;
+    saving = true;
+    const before = await version();
+    let r = null;
+    if (before) {
+        try {
+            const res = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Jungle-Deck': 'save' },
+                body: JSON.stringify(payload),
+            });
+            r = { status: res.status, body: await res.json().catch(() => ({})) };
+        } catch (e) {
+            r = null;
+        }
+    }
+    saving = false;
+    if (!r) {
+        notice('off', SERVER_OFF);
+        exportFile(payload.sections);
+    } else if (r.status < 300) {
+        Object.assign(base, payload.sections);
+        /* Adopt the new hash only when the file held this page's base before
+           the write. Otherwise it also holds agent edits the page does not
+           show: keep the old hash, so a later save of such a section gets a
+           409 instead of overwriting it, and the poll offers R */
+        if (before.hash === baseHash) baseHash = r.body.hash;
+        conflicted = false;
+        saveLocal();
+        clearNotice('conflict'); clearNotice('error'); clearNotice('off');
+        const ids = r.body.written || [];
+        flash(ids.length ? '저장했어요 (' + ids.join(', ') + ')' : '바뀐 곳이 없어요');
+    } else if (r.status === 409) {
+        conflicted = true;
+        if (editing) toggleEdit();
+        notice('conflict', '에이전트 수정과 겹쳐요 (' + (r.body.conflicts || []).join(', ')
+                           + "). 에이전트에게 '겹친 거 합쳐줘'라고 말해 주세요");
+        if (own && r.body.payload) {   /* the server kept the edits in _backup/, so the autosave may go */
+            try { localStorage.removeItem(STORE); } catch (e) { notice('storage', STORAGE_FAILED); }
+        }
+    } else {
+        notice('error', '저장이 안 됐어요 (HTTP ' + r.status + ') — 대신 파일로 내보냈어요');
+        exportFile(payload.sections);
+    }
+    return r;
+}
+
+function save() {
+    if (!served) return exportFile();
+    const sections = changed(base, sectionsNow());
+    if (!Object.keys(sections).length) return flash('바뀐 곳이 없어요');
+    send({ base_hash: baseHash, sections }, true);
+}
+
+/* Change notice: poll /version every 3 s; after two misses, every 30 s */
+let misses = 0, reloadReady = false;
+async function poll() {
+    const v = await version();
+    if (!v) {
+        misses++;
+        if (misses >= 2) { notice('off', SERVER_OFF); reloadReady = false; clearNotice('agent'); }
+        setTimeout(poll, misses >= 2 ? POLL_SLOW_MS : POLL_MS);
+        return;
+    }
+    if (misses >= 2) clearNotice('off');
+    misses = 0;
+    if (saving) {
+        /* the hash moves under a save; judge it on the next poll */
+    } else if (v.hash !== baseHash) {
+        /* After a 409 the server holds the edits in _backup/, so R is safe */
+        reloadReady = conflicted || !unsaved();
+        notice('agent', reloadReady ? '에이전트가 수정했어요 — R로 새로고침'
+                                    : '에이전트가 수정했어요 — 먼저 저장(Ctrl+S)하세요');
+    } else {
+        reloadReady = false;
+        clearNotice('agent');
+    }
+    setTimeout(poll, POLL_MS);
+}
+if (served) setTimeout(poll, POLL_MS);
+
 const pad = n => String(n).padStart(2, '0');
 let cur = 0;
 
@@ -653,7 +933,7 @@ slides.forEach((s, i) => {
 });
 
 document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') { e.preventDefault(); exportFile(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') { e.preventDefault(); save(); return; }
     if (e.target.isContentEditable) {
         if (e.key === 'Escape') e.target.blur();   /* leave the caret so arrows navigate again */
         return;
@@ -666,6 +946,7 @@ document.addEventListener('keydown', (e) => {
         return;   /* the overlay holds the keys until it closes */
     }
     if (e.code === 'KeyE') { toggleEdit(); return; }
+    if (e.code === 'KeyR' && reloadReady) { location.reload(); return; }   /* the URL keeps #N */
     if (e.code === 'KeyN') { notesPanel.hidden = !notesPanel.hidden; return; }
     switch (e.key) {
         case 'ArrowRight': case 'ArrowDown': case 'PageDown': case ' ':
@@ -716,8 +997,10 @@ document.addEventListener('paste', e => {
     document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
 });
 
-function exportFile() {
+/* overrides: {id: html} put into the copy by id (a stash export) */
+function exportFile(overrides) {
     const doc = document.documentElement.cloneNode(true);
+    if (overrides) applySections(overrides, doc.querySelectorAll('.slide'));
     scrub(doc);
     doc.querySelector('body').removeAttribute('class');
     doc.querySelectorAll('.slide').forEach(s => {
@@ -731,6 +1014,9 @@ function exportFile() {
     doc.querySelector('#editToggle').setAttribute('aria-label', '편집 모드 켜기');
     doc.querySelector('#helpOverlay').setAttribute('hidden', '');
     doc.querySelector('#firstHint').setAttribute('hidden', '');
+    doc.querySelector('#notices').innerHTML = '';
+    const meta = doc.querySelector('meta[name="jd-base"]');   /* served copy only: the export is a file */
+    if (meta) meta.remove();
     scrub(doc);
     const blob = new Blob(['<!DOCTYPE html>\n' + doc.outerHTML], { type: 'text/html' });
     const a = document.createElement('a');
