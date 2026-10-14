@@ -1,7 +1,7 @@
 ---
 scope: What the jungle-deck skill does and how it is built
 authority: Design settled by grilling sessions with the user: 2026-10-07 (Q1–Q27) and 2026-10-15 (Q1–Q30, from real users' feedback), then an agent-grilling challenge of the 2026-10-15 revision (C1–C23, all items approved by the user 2026-10-15). Decisions here are the user's; change them only with the user
-status: revised 2026-10-15; the revision is not implemented. main implements the 2026-10-07 design (tickets T1–T10, T13). Next step: cut tickets for the revision
+status: revised 2026-10-15; the revision is not implemented. main implements the 2026-10-07 design (tickets T1–T10, T13). Revision tickets: T14–T24 (GitHub Issues #14–#24)
 ---
 
 # jungle-deck — spec
@@ -239,7 +239,21 @@ T1–T13 cover the 2026-10-07 design.
 | T12 | Template page on benjohnbill.github.io (D18) | T11 |
 | T13 | Portability: downloads folder per OS, Python check, `python_cmd` in the docs (D20) | T10 |
 
-Tickets for the 2026-10-15 revision are cut next.
+T14–T24 cover the 2026-10-15 revision. Issue number = ticket number.
+
+| ID | Ticket | Blocked by |
+|---|---|---|
+| T14 | `stage.html` part 1: derived tokens, template text, help overlay | — |
+| T15 | BRIEF and local.md contracts: new keys, migration (D16, D23), generic examples, D24 guard | — |
+| T16 | `scripts/serve.py`: revise server with three-way save. Tests first | T14 |
+| T17 | `stage.html` part 2: served-mode save, autosave by id, banners | T16 |
+| T18 | `publish.py`: Pages URL forms, `pages_dir`, assets, back-link depth, optional week. Tests first | T15 |
+| T19 | `grill.md` + `context.md`: metadata round, `source_repo`, story frame, script, proposal rule | T15 |
+| T20 | `reference/design.md`: design phase and getdesign mapping | T14, T15 |
+| T21 | `build.md` + `revise.md`: Design section, assets, script to notes, server-based revise | T16, T17, T20 |
+| T22 | `publish.md`: commit question, folder `.gitignore`, deploy question, D14 branch | T18 |
+| T23 | `SKILL.md` router and README workflow tables | T19–T22 |
+| T24 | Manual verification of the revision | T23 |
 
 ## Open items
 
