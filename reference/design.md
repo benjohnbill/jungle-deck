@@ -84,10 +84,10 @@ For each token, read the `colors:` keys in order. The first key that is present 
 - `--paper`, `--ink`: keep the template value. These are the base of every `color-mix()`; tell the student which one fell back.
 - `--acc`: apply the accent rule.
 
-**Accent rule.** The accent fails when `primary` is missing, equals `ink`, or has a contrast below 3:1 against `ink` (WCAG contrast ratio). Then:
+**Accent rule.** The accent sits on the page. Measure it against the mapped `--paper` value (`paper`). The accent fails when `primary` is missing, equals `ink`, or has a contrast below 3:1 against `paper` (WCAG contrast ratio). Then:
 
-1. Search the colors in this order: `link`, `link-*`, `brand-*`, `accent*`, then every other color in file order. Take the first color that passes all three tests: saturated (HSL saturation 0.4 or more, lightness 0.2 to 0.8), not equal to `ink`, and a contrast of 3:1 or more against `ink`.
-2. No color passes: use `#3b82f6`. This mid blue keeps 3:1 against a near-black and a near-white ink.
+1. Search the colors in this order: `link`, `link-*`, `brand-*`, `accent*`, then every other color in file order. Take the first color that passes all three tests: saturated (HSL saturation 0.4 or more, lightness 0.2 to 0.8), not equal to `ink`, and a contrast of 3:1 or more against `paper`.
+2. No color passes: use `#3b82f6`. This mid blue keeps 3:1 against a near-black and a near-white paper. On a mid-tone paper, `#3b82f6` can also fall below 3:1 (`nintendo-2001`). Tell the student when you show it.
 3. Ask the student to confirm the accent. Show the color you took and the key it came from.
 
 **Fonts.** Take the font family only, from the body and display entries of `typography:`.

@@ -1,4 +1,4 @@
-"""Contract checks for reference/design.md (SPEC D14, D17, D25; issue #20).
+"""Contract checks for reference/design.md (SPEC D14, D17, D25; issues #20, #27).
 
 The mapping test reads the token chains from the table in design.md and
 applies them, so it checks the document, not a copy of it.
@@ -132,14 +132,16 @@ def map_tokens(colors, text):
     for tok, keys in doc_chains(text).items():
         hit = next((colors[k] for k in keys if k in colors), None)
         out[tok] = hit or derived.get(tok) or template_value(tok)
-    ink = rgb(out["--ink"])
+    ink, paper = rgb(out["--ink"]), rgb(out["--paper"])
+
+    def readable(c):
+        return bool(c) and c != ink and contrast(c, paper) >= 3
 
     def passes(key):
         c = rgb(colors[key])
-        return bool(c) and saturated(c) and c != ink and contrast(c, ink) >= 3
+        return readable(c) and saturated(c)
 
-    if "primary" in colors and rgb(colors["primary"]) != ink \
-            and contrast(rgb(colors["primary"]), ink) >= 3:
+    if "primary" in colors and readable(rgb(colors["primary"])):
         return out, "primary"
     keys = list(colors)
     order = ([k for k in keys if k == "link" or k.startswith("link-")]
@@ -219,10 +221,12 @@ class DesignReferenceTest(unittest.TestCase):
         body = flat(section(self.text, "Token mapping"))
         for tok in ("--mut", "--panel", "--grid"):
             self.assertRegex(body, rf"`{tok}`: `color-mix\(")
-        self.assertIn("contrast below 3:1 against `ink`", body)
+        self.assertIn("contrast below 3:1 against `paper`", body)
         self.assertIn("`link`, `link-*`, `brand-*`, `accent*`", body)
-        self.assertIn("3:1 or more against `ink`", body)
+        self.assertIn("3:1 or more against `paper`", body)
+        self.assertNotIn("against `ink`", body)
         self.assertIn(f"No color passes: use `{FALLBACK_ACCENT}`", body)
+        self.assertIn("mid-tone paper", body)
         self.assertEqual(set(empty_chain_values(self.text)),
                          {"--mut", "--panel", "--grid"})
         self.assertIn("Ask the student to confirm the accent", body)
@@ -275,17 +279,31 @@ class MappingTest(unittest.TestCase):
         out, src = map_tokens(colors, self.text)
         self.assertEqual((out["--acc"], src), (FALLBACK_ACCENT, None))
 
-    def test_low_contrast_primary_takes_a_passing_color(self):
-        colors = self.colors_of('  ink: "#0d253d"\n  primary: "#1c1e54"\n'
-                                '  brand-dark: "#1b1d50"\n'
-                                '  accent-sky: "#38bdf8"\n')
+    def test_primary_close_to_ink_is_kept_when_it_reads_on_paper(self):
+        # stripe: a saturated primary that is dark like the ink (#27).
+        colors = self.colors_of('  canvas: "#ffffff"\n  ink: "#0d253d"\n'
+                                '  primary: "#533afd"\n')
         out, src = map_tokens(colors, self.text)
-        self.assertEqual((out["--acc"], src), ("#38bdf8", "accent-sky"))
+        self.assertEqual((out["--acc"], src), ("#533afd", "primary"))
 
-    def test_fallback_accent_passes_near_black_and_near_white_ink(self):
-        for ink in ("#000000", "#262626", "#f0f2f5", "#ffffff"):
+    def test_low_contrast_primary_on_paper_takes_a_passing_color(self):
+        colors = self.colors_of('  canvas: "#ffffff"\n  ink: "#111111"\n'
+                                '  primary: "#ffe14d"\n'
+                                '  brand-pale: "#ffd84a"\n'
+                                '  accent-sky: "#0369a1"\n')
+        out, src = map_tokens(colors, self.text)
+        self.assertEqual((out["--acc"], src), ("#0369a1", "accent-sky"))
+
+    def test_dark_paper_measures_against_paper(self):
+        colors = self.colors_of('  canvas: "#0a0a0a"\n  ink: "#fafafa"\n'
+                                '  primary: "#1e1b4b"\n  link: "#60a5fa"\n')
+        out, src = map_tokens(colors, self.text)
+        self.assertEqual((out["--acc"], src), ("#60a5fa", "link"))
+
+    def test_fallback_accent_passes_near_black_and_near_white_paper(self):
+        for paper in ("#000000", "#262626", "#f0f2f5", "#ffffff"):
             self.assertGreaterEqual(
-                contrast(rgb(FALLBACK_ACCENT), rgb(ink)), 3, ink)
+                contrast(rgb(FALLBACK_ACCENT), rgb(paper)), 3, paper)
 
     def test_no_front_matter_is_none(self):
         self.assertIsNone(front_colors("# Brand\n\nprose only\n"))
@@ -302,7 +320,8 @@ def fetch(url):
 
 class GetdesignNetworkTest(unittest.TestCase):
     """SPEC "Verification plan": every getdesign file with front matter
-    yields all mapped tokens or a derived value, and an accent != ink."""
+    yields all mapped tokens or a derived value, and an accent != ink that
+    reads on --paper. Prints the kept/swapped/fallback counts (#27)."""
 
     @unittest.skipUnless(os.environ.get("JD_NETWORK"), "set JD_NETWORK=1")
     def test_every_repo_file_maps(self):
@@ -316,23 +335,31 @@ class GetdesignNetworkTest(unittest.TestCase):
             self.skipTest(f"GitHub not reachable: {e}")
         self.assertTrue(paths, "no DESIGN.md in the repo tree")
         doc = DESIGN.read_text(encoding="utf-8")
-        with_fm = 0
+        kinds = {"kept": [], "swapped": [], "fallback": []}
         for path, text in zip(paths, texts):
             colors = front_colors(text)
             if colors is None:
                 continue
-            with_fm += 1
             with self.subTest(path=path):
-                out, _ = map_tokens(colors, doc)
+                out, src = map_tokens(colors, doc)
+                kind = ("kept" if src == "primary"
+                        else "fallback" if src is None else "swapped")
+                kinds[kind].append(f"{path.split('/')[1]}:{src}")
                 self.assertEqual(set(out), set(D25_CHAINS))
                 for tok, value in out.items():
                     self.assertRegex(value, CSS_COLOR, tok)
                 ink, acc = rgb(out["--ink"]), rgb(out["--acc"])
-                self.assertIsNotNone(rgb(out["--paper"]), "--paper not hex")
+                paper = rgb(out["--paper"])
+                self.assertIsNotNone(paper, "--paper not hex")
                 self.assertIsNotNone(ink, "--ink not hex")
                 self.assertNotEqual(acc, ink)
-                self.assertGreaterEqual(contrast(acc, ink), 3)
-        self.assertGreater(with_fm, 0)
+                # Only the fallback on a mid-tone paper may miss 3:1.
+                if contrast(acc, paper) < 3:
+                    self.assertEqual(out["--acc"], FALLBACK_ACCENT)
+        self.assertTrue(any(kinds.values()), "no file with front matter")
+        print()
+        for kind, names in kinds.items():
+            print(f"{kind} {len(names)}: {' '.join(names)}")
 
 
 if __name__ == "__main__":
