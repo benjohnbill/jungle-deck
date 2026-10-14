@@ -251,6 +251,20 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
             self.assertIn(s, text)
             self.assertIn(s, self.stage)
 
+    def test_overflow_and_deleted_notices(self):
+        # #32: the page only signals; the agent fixes the layout or asks.
+        rows = {r.split("|")[1]: r for r in section(self.text, "What the student sees").splitlines()
+                if r.startswith("| \"")}
+        over = next(r for k, r in rows.items() if "글이 상자를 넘쳐요 (" in k)
+        gone = next(r for k, r in rows.items() if "에이전트가 슬라이드를 지웠어요 (" in k)
+        for s in ["글이 상자를 넘쳐요 (", "에이전트에게 레이아웃 조정을 부탁하세요", "에이전트가 슬라이드를 지웠어요 ("]:
+            self.assertIn(s, self.stage)
+        self.assertRegex(over, r"(?i)keep the student's words and size steps")
+        self.assertRegex(over, r"(?i)proposal rule")
+        self.assertRegex(gone, r"(?i)confirm .*intended")
+        self.assertIn("`_backup/`", gone)
+        self.assertNotIn("복원", gone)
+
     def test_monitor_is_optional(self):
         text = flat(self.text)
         self.assertIn("tail -n0 -F", text)

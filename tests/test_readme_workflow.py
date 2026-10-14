@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+STAGE = (ROOT / "templates" / "stage.html").read_text(encoding="utf-8")
 
 PHASES = ("grill", "design", "build", "revise", "publish")
 
@@ -72,6 +73,19 @@ class TroubleshootingTest(unittest.TestCase):
         for symptom in ("localhostForwarding=false", "서버가 꺼져 있어요", "`Monitor`"):
             with self.subTest(symptom=symptom):
                 self.assertTrue(any(symptom in r for r in self.rows), symptom)
+
+    def test_page_notice_rows(self):
+        # #32: each notice the page can show about the skill's edits has a row.
+        for symptom, fixes in (("에이전트 수정 뒤 내 저장 문구가 바뀌었어요", ['"복원"', '"그대로 두기"']),
+                               ("글이 상자를 넘쳐요", ["fix the layout", "keeps your words and sizes"]),
+                               ("에이전트가 슬라이드를 지웠어요", ["meant to delete", "puts the slide back"])):
+            with self.subTest(symptom=symptom):
+                self.assertIn(symptom, STAGE)
+                row = next((r for r in self.rows if symptom in r.split("|")[1]), None)
+                self.assertIsNotNone(row, symptom)
+                fix = row.split("|")[3]
+                for f in fixes:
+                    self.assertIn(f, fix)
 
     def test_each_row_has_symptom_cause_fix(self):
         for row in self.rows:

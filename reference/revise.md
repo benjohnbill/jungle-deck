@@ -1,7 +1,7 @@
 ---
 scope: The revise phase (SPEC D11, D15): revise server, save in the page, read the change, adjust, conflicts, and the file-export fallback with pull_edits.py
 authority: SPEC.md D11, D15, "Revise server". CLI lines here must match `scripts/serve.py --help` and `scripts/pull_edits.py --help`; page behaviour must match templates/stage.html. tests/test_build_revise_reference.py checks them
-status: revised 2026-10-15 (#21, #28, #30, #31); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
+status: revised 2026-10-15 (#21, #28, #30, #31, #32); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
 ---
 
 # Revise phase
@@ -70,6 +70,8 @@ While served, the page checks the source every 3 s. After two failed checks it c
 | "에이전트가 수정했어요 — 먼저 저장(Ctrl+S)하세요" | You changed the source while the student had unsaved edits. | Tell the student to save first. A section that you both changed gets a 409. |
 | "저장 안 된 편집이 있어요 (<ids>) — 그 뒤에 파일이 바뀌었어요", with "복원", "파일로 내보내기", "닫기" | The page kept edits that were never saved, and the file changed after them. | Tell the student to press "복원". On the server it is a normal save of those sections: read the log as in step 4. |
 | "에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (<ids>)", with "복원", "그대로 두기" | The words of a student save are not in the file any more: your edit changed them. The page compares words, not markup, so a layout change alone does not show it. | Let the student choose. "복원" writes a `restore` line, "그대로 두기" a `keep` line: handle it as in step 4. |
+| "글이 상자를 넘쳐요 (<ids>) — 에이전트에게 레이아웃 조정을 부탁하세요", with "닫기" | Text in those slides does not fit its box or its slide at the student's window size, often after a size step. In edit mode the page marks each such box. The page never fixes it. | Fix the layout of those slides as in loop step 6: keep the student's words and size steps. When the slide cannot fit with them, propose a change under the proposal rule (`reference/grill.md`) and use the student's pick. |
+| "에이전트가 슬라이드를 지웠어요 (<ids>)", with "닫기" | A slide the student saved is gone from the file: your edit deleted it or changed its id. The page shows this once. | Confirm with the student that the deletion was intended. When the student says it was not, put the section back under the edit rule: from your read before that edit, or from the newest `_backup/` copy or git commit that still holds it. Your own edits make no backup. |
 | "자동 저장이 안 돼요 — 지금 Ctrl+S로 저장하세요" | The browser refused local storage. | Tell the student to save now. |
 
 ## When the save is refused

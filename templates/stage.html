@@ -478,6 +478,17 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
 #sizeBar[hidden], #sizeBar button[hidden] { display: none; }
 #sizeBar button { margin-left: 0; padding: .15em .6em; }
 #sizeBar button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+/* ===========================================
+   12. Overflow marks: text that does not fit its box or its slide.
+   Shown in edit mode, where the student can act on them. The page never
+   fixes the layout itself. jd-measure holds steps in place while measuring
+   =========================================== */
+body.edit-active [data-jd-over], body.edit-active [data-jd-over]:focus {
+    outline: 3px solid var(--ink); outline-offset: 2px;
+    background-image: repeating-linear-gradient(45deg, var(--hl) 0 6px, transparent 6px 12px);
+}
+body.jd-measure [data-step] { transform: none; transition: none; }
 </style>
 </head>
 <body>
@@ -622,6 +633,7 @@ const STASH = STORE + ':stash:';   /* + base hash: autosaves the file changed un
 function scrub(root) {
     root.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
     root.querySelectorAll('.on').forEach(e => e.classList.remove('on'));
+    root.querySelectorAll('[data-jd-over]').forEach(e => e.removeAttribute('data-jd-over'));
     root.querySelectorAll('[class=""]').forEach(e => e.removeAttribute('class'));
     root.querySelectorAll('[style*="--box-w"]').forEach(e => {   /* runtime width, set by fitBoxes */
         e.style.removeProperty('--box-w');
@@ -706,6 +718,35 @@ function overwritten(saved, file) {
         .sort();
 }
 
+/* Saved slides whose id the file no longer holds: the agent deleted them */
+function deletedSlides(saved, file) {
+    return Object.keys(saved).filter(id => !(id in file)).sort();
+}
+/* Overflow on one measured box: {sw, cw, sh, ch} its scroll and client sizes, r its
+   rect [left, top, right, bottom], clip the rect of the nearest ancestor that clips
+   it (null: none), cuts: the box cuts long lines on purpose (code in a <pre>), so only
+   its height counts. Over: the content is larger than the box, or the box reaches past
+   the clip on any side (centered content overflows at the top too). 1 px is rounding */
+const OVER_PX = 1;
+function overflows(m) {
+    if ((!m.cuts && m.sw > m.cw + OVER_PX) || m.sh > m.ch + OVER_PX) return true;
+    const c = m.clip, [l, t, r, b] = m.r;
+    return !!c && (l < c[0] - OVER_PX || t < c[1] - OVER_PX || r > c[2] + OVER_PX || b > c[3] + OVER_PX);
+}
+
+/* The boxes under el that clip their content (clips(el) says so), for the overflow check.
+   Not real run output, not SVG: the student cannot fix them, and a log line cut at the
+   panel edge is on purpose. Not the notes: they are not on the slide */
+function clippingBoxes(el, clips, out = []) {
+    Array.from(el.children).forEach(c => {
+        if (c.hasAttribute('data-evidence') || /^svg$/i.test(c.tagName)
+            || (c.tagName === 'ASIDE' && c.classList.contains('notes'))) return;
+        if (clips(c)) out.push(c);
+        clippingBoxes(c, clips, out);
+    });
+    return out;
+}
+
 /* Edit rules on element-like nodes (tagName, childNodes, children, hasAttribute, classList).
    Editable: the outermost elements in a slide that hold text of their own. Locked: real
    run output under [data-evidence], the notes (edited in the notes panel), the slide
@@ -769,6 +810,50 @@ function clearNotice(key) {
 const STORAGE_FAILED = '자동 저장이 안 돼요 — 지금 Ctrl+S로 저장하세요';
 const SERVER_OFF = "서버가 꺼져 있어요. 에이전트에게 '서버 다시 켜줘'라고 말해 주세요";
 
+/* ===========================================
+   Overflow notice: after load, after each edit or size step, and on resize,
+   mark every box whose text does not fit and name its slides. No auto-fix:
+   the agent adjusts the layout
+   =========================================== */
+const rectOf = el => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+const clipsContent = el => { const cs = getComputedStyle(el); return cs.overflowX !== 'visible' || cs.overflowY !== 'visible'; };
+/* The boxes to check in a slide: its text and every box that clips (see clippingBoxes) */
+const boxesIn = s => [...new Set([...editableIn(s), ...clippingBoxes(s, clipsContent)])]
+    .filter(e => e.getClientRects().length);
+function measure(el) {
+    let a = el.parentElement;
+    while (a && !clipsContent(a) && !a.classList.contains('slide')) a = a.parentElement;
+    return { sw: el.scrollWidth, cw: el.clientWidth, sh: el.scrollHeight, ch: el.clientHeight,
+             r: rectOf(el), clip: a ? rectOf(a) : null,
+             cuts: el.tagName === 'PRE' && getComputedStyle(el).whiteSpace === 'pre' };
+}
+/* Checked once the typing settles, and never while a step slides in: measuring holds
+   every step in place, which would cut that reveal short */
+const OVER_WAIT_MS = 300;
+let overTimer = 0, stepAt = 0, overShown = '', overDismissed = '';
+function scheduleOverflow() {
+    clearTimeout(overTimer);
+    overTimer = setTimeout(checkOverflow, OVER_WAIT_MS);
+}
+function checkOverflow() {
+    if (performance.now() - stepAt < 600) return scheduleOverflow();   /* the reveal takes --dur (.5s) */
+    document.body.classList.add('jd-measure');   /* hidden steps sit 14px low until shown */
+    const found = slides.map(s => boxesIn(s).map(el => [el, overflows(measure(el))]));   /* read all, then mark */
+    document.body.classList.remove('jd-measure');
+    found.flat().forEach(([el, over]) => el.toggleAttribute('data-jd-over', over));
+    const ids = slides.filter((s, i) => found[i].some(([, over]) => over)).map(s => s.id);
+    const key = ids.join(', ');
+    if (!key) { overShown = overDismissed = ''; return clearNotice('overflow'); }
+    if (key === overDismissed || key === overShown) return;   /* 닫기 holds until the set changes */
+    overShown = key;
+    notice('overflow', '글이 상자를 넘쳐요 (' + key + ') — 에이전트에게 레이아웃 조정을 부탁하세요', [
+        ['닫기', () => { overDismissed = key; overShown = ''; clearNotice('overflow'); }],
+    ]);
+}
+window.addEventListener('resize', scheduleOverflow);
+window.addEventListener('load', scheduleOverflow);
+document.fonts.ready.then(scheduleOverflow);
+
 function saveLocal() {
     try {
         const rec = autosaveRecord(baseHash, base, sectionsNow());
@@ -778,6 +863,7 @@ function saveLocal() {
     } catch (e) {
         notice('storage', STORAGE_FAILED);
     }
+    scheduleOverflow();   /* every change autosaves, so every change is checked */
 }
 function dropStash(key) {
     try { localStorage.removeItem(key); } catch (e) { notice('storage', STORAGE_FAILED); }
@@ -958,9 +1044,12 @@ function rememberSaved(sections) {
 /* file: {id: html} of the source with the hash `fileHash` */
 function checkOverwrites(file, fileHash) {
     const saved = savedMap();
-    const gone = Object.keys(saved).filter(id => !(id in file));   /* a deleted slide: the server backup has it */
+    const gone = deletedSlides(saved, file);   /* no 복원: the agent puts it back if it was a mistake */
     if (gone.length) {
-        gone.forEach(id => { delete saved[id]; });
+        notice('deleted', '에이전트가 슬라이드를 지웠어요 (' + gone.join(', ') + ')', [
+            ['닫기', () => clearNotice('deleted')],
+        ]);
+        gone.forEach(id => { delete saved[id]; });   /* told once */
         try { localStorage.setItem(SAVED, JSON.stringify(saved)); } catch (e) { notice('storage', STORAGE_FAILED); }
     }
     const ids = overwritten(saved, file);
@@ -1064,6 +1153,7 @@ const maxStep = s => Math.max(0, ...Array.from(s.querySelectorAll('[data-step]')
 const shown = s => Number(s.dataset.shown || 0);
 
 function setShown(s, n) {
+    stepAt = performance.now();
     s.dataset.shown = n;
     s.querySelectorAll('[data-step]').forEach(e => e.classList.toggle('on', Number(e.dataset.step) <= n));
     renderNotes();

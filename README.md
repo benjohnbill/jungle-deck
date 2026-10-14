@@ -130,6 +130,9 @@ picked (text size, box width). `R` reloads when the page asks for it.
 | "에이전트 수정과 겹쳐요" | You and the skill changed the same slide | Say "겹친 거 합쳐줘". Your words win |
 | "저장이 안 됐어요 (HTTP 403)" | The page was not opened at the server address | Open the address the skill gave you. The failed save was exported to your downloads folder; tell the skill |
 | "저장 안 된 편집이 있어요 — 그 뒤에 파일이 바뀌었어요" | The browser kept edits you never saved, and the file changed after them | Press "복원" |
+| "에이전트 수정 뒤 내 저장 문구가 바뀌었어요" | A change by the skill replaced words or sizes you saved | Press "복원" to put your save back, or "그대로 두기" to keep the skill's version. Then tell the skill which one |
+| "글이 상자를 넘쳐요" | Your text does not fit its box or its slide, often after a size step. In edit mode (`E`) the box is marked | Ask the skill to fix the layout. It keeps your words and sizes, or proposes a change |
+| "에이전트가 슬라이드를 지웠어요" | A slide you saved is gone from the file | Ask the skill whether it meant to delete it. If not, it puts the slide back as it was before its edit |
 | The live page check times out | GitHub Pages is still building | Ask the skill to check again later. Do not push again |
 
 ## Credits

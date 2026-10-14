@@ -194,6 +194,51 @@ class OverwrittenSaveTest(unittest.TestCase):
                              f"{{s1: '<p>A</p>', s3: '<p>C</p>'}})"), ["s1", "s3"])
 
 
+
+@unittest.skipUnless(NODE, "node is not installed")
+class DeletedSlideTest(unittest.TestCase):
+    """#32: a saved slide whose id the file no longer holds was deleted."""
+
+    def test_saved_ids_missing_from_the_file(self):
+        saved = {"s4": "<p>끝</p>", "s2": "<p>b</p>", "s3": "<p>c</p>"}
+        self.assertEqual(run(f"deletedSlides({json.dumps(saved)}, {{s1: 'a', s3: 'x'}})"),
+                         ["s2", "s4"])
+
+    def test_nothing_deleted(self):
+        self.assertEqual(run(f"deletedSlides({json.dumps(BEFORE)}, {json.dumps(AFTER_SPLIT)})"), [])
+        self.assertEqual(run("deletedSlides({}, {s1: ''})"), [])
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class OverflowTest(unittest.TestCase):
+    """#32: a box overflows when its content is larger than the box, or when
+    it reaches past the nearest ancestor that clips it. Measured numbers in,
+    no DOM: {sw, cw, sh, ch, r: [left, top, right, bottom], clip: rect|null}."""
+
+    FIT = {"sw": 300, "cw": 300, "sh": 80, "ch": 80, "r": [100, 200, 400, 280],
+           "clip": [50, 100, 1230, 620]}
+
+    def over(self, **change):
+        return run(f"overflows({json.dumps(dict(self.FIT, **change))})")
+
+    def test_content_that_fits_is_not_flagged(self):
+        self.assertFalse(self.over())
+        self.assertFalse(self.over(clip=None))
+
+    def test_content_taller_or_wider_than_its_box(self):
+        self.assertTrue(self.over(sh=120))
+        self.assertTrue(self.over(sw=340))
+
+    def test_a_box_past_its_clip_on_any_side(self):
+        self.assertTrue(self.over(r=[100, 560, 400, 640]))   # below
+        self.assertTrue(self.over(r=[100, 90, 400, 170]))    # above: centered content
+        self.assertTrue(self.over(r=[20, 200, 320, 280]))    # left
+        self.assertTrue(self.over(r=[1000, 200, 1300, 280]))  # right
+
+    def test_one_pixel_of_rounding_is_not_overflow(self):
+        self.assertFalse(self.over(sh=81, sw=301, r=[49.5, 99.5, 1230.8, 620.9]))
+
+
 # A tiny element tree for the edit rule: N(tag, attrs, *children), text as str.
 FAKE_DOM = """
 const N = (tag, attrs, ...kids) => {
@@ -242,6 +287,38 @@ class EditRuleTest(unittest.TestCase):
                 " N('aside', {class: 'notes'}, N('p', {n: 'note'}, '노트')))")
         self.assertEqual(editable(tree), ["p"])
 
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class OverflowBoxesTest(unittest.TestCase):
+    """#32: the boxes checked for overflow. A box clips when its class says
+    so here (the page asks getComputedStyle). Evidence and SVG are left out:
+    the student cannot fix them, and a cut log line is on purpose."""
+
+    def boxes(self, tree):
+        return run(f"(() => {{ {FAKE_DOM} return names(clippingBoxes({tree}, "
+                   f"e => e.classList.contains('clip'))); }})()")
+
+    def test_clipping_boxes_at_any_depth(self):
+        tree = ("N('section', {class: 'clip'}, N('div', {class: 'slide-content clip', n: 'content'},"
+                " N('div', {class: 'panels'}, N('div', {class: 'panel clip', n: 'panel'},"
+                " N('pre', {class: 'clip', n: 'code'}, 'x = 1')))))")
+        self.assertEqual(self.boxes(tree), ["content", "panel", "code"])
+
+    def test_evidence_svg_and_notes_are_left_out(self):
+        tree = ("N('section', {}, N('div', {class: 'panel clip', n: 'panel'},"
+                " N('pre', {class: 'clip', 'data-evidence': '', n: 'log'}, 'Breakpoint 1',"
+                " N('span', {class: 'clip'}, 'hit'))),"
+                " N('figure', {'data-evidence': ''}, N('div', {class: 'clip', n: 'shot'})),"
+                " N('svg', {class: 'clip'}, N('marker', {class: 'clip', n: 'marker'})),"
+                " N('aside', {class: 'notes'}, N('div', {class: 'clip', n: 'note'})))")
+        self.assertEqual(self.boxes(tree), ["panel"])
+
+    def test_code_cut_on_purpose_counts_only_its_height(self):
+        wide = {"sw": 900, "cw": 400, "sh": 80, "ch": 80, "r": [0, 0, 400, 80], "clip": None}
+        self.assertFalse(run(f"overflows({json.dumps(dict(wide, cuts=True))})"))
+        self.assertTrue(run(f"overflows({json.dumps(dict(wide, cuts=True, sh=120))})"))
+        self.assertTrue(run(f"overflows({json.dumps(wide)})"))
 
 @unittest.skipUnless(NODE, "node is not installed")
 class SizeStepTest(unittest.TestCase):
@@ -373,6 +450,37 @@ class ServedModeHooksTest(unittest.TestCase):
         js = js[:js.index("\n}\n")]
         self.assertIn("slides.flatMap(s => editableIn(s))", js)
         self.assertNotIn("const EDITABLE", self.text)
+
+    def test_overflow_check_is_wired(self):
+        # #32: checked after load, after every change (each one autosaves), on resize.
+        t = self.text
+        js = t[t.index("function saveLocal"):]
+        self.assertIn("scheduleOverflow()", js[:js.index("\n}\n")])
+        self.assertIn("clippingBoxes(s, clipsContent)", t)
+        self.assertIn("stepAt = performance.now();", t[t.index("function setShown"):])
+        for s in ["window.addEventListener('resize', scheduleOverflow)",
+                  "window.addEventListener('load', scheduleOverflow)",
+                  "overflows(measure(el))", "toggleAttribute('data-jd-over', over)",
+                  "글이 상자를 넘쳐요 (", "에이전트에게 레이아웃 조정을 부탁하세요"]:
+            self.assertIn(s, t)
+        # The mark is page state: never saved, never exported.
+        scrub = t[t.index("function scrub"):]
+        self.assertIn("removeAttribute('data-jd-over')", scrub[:scrub.index("\n}\n")])
+        # Marks show only in edit mode.
+        css = t[:t.index("</style>")]
+        for rule in re.findall(r"(?m)^([^{}\n]*\[data-jd-over\][^{}\n]*)\{", css):
+            self.assertIn("body.edit-active", rule)
+
+    def test_deleted_slide_notice_is_wired(self):
+        js = self.text[self.text.index("function checkOverwrites"):]
+        js = js[:js.index("\n}\n")]
+        self.assertIn("deletedSlides(saved, file)", js)
+        deleted = js[js.index("notice('deleted'"):]
+        deleted = deleted[:deleted.index("]);")]
+        self.assertIn("에이전트가 슬라이드를 지웠어요 (", deleted)
+        self.assertIn("'닫기'", deleted)
+        self.assertNotIn("복원", deleted)
+        self.assertIn("delete saved[id]", js)
 
     def test_size_toolbar_markup(self):
         m = re.search(r'<div id="sizeBar"[^>]*>(.*?)</div>', self.text, re.S)
