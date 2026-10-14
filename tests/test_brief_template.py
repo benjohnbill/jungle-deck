@@ -156,6 +156,14 @@ class SaveFolderTest(unittest.TestCase):
         for item in ["BRIEF.md", "<slug>.html", "<slug>.assets/", "evidence/", ".gitignore"]:
             self.assertIn(item, self.body)
 
+    def test_kind_line_defers_to_how_to_resume(self):
+        # "How to resume" step 1 is the one source for what counts as a BRIEF;
+        # it also accepts the old format (D23).
+        line = next(l for l in self.body.split(" - ") if l.startswith("`kind: jungle-deck`"))
+        self.assertNotRegex(line, r"(?i)\bonly a file with this line\b")
+        self.assertIn("old format", line)
+        self.assertIn('"How to resume"', line)
+
 
 class ResumeTest(unittest.TestCase):
     def setUp(self):
