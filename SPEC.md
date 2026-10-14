@@ -1,7 +1,7 @@
 ---
 scope: What the jungle-deck skill does and how it is built
 authority: Design settled by grilling sessions with the user: 2026-10-07 (Q1–Q27) and 2026-10-15 (Q1–Q30, from real users' feedback), then an agent-grilling challenge of the 2026-10-15 revision (C1–C23, all items approved by the user 2026-10-15). Decisions here are the user's; change them only with the user
-status: revised 2026-10-15; the revision is not implemented. main implements the 2026-10-07 design (tickets T1–T10, T13). Revision tickets: T14–T24 (GitHub Issues #14–#24)
+status: revised 2026-10-15; the revision is not implemented. main implements the 2026-10-07 design (tickets T1–T10, T13). Revision tickets: T14–T28 (GitHub Issues #14–#28)
 ---
 
 # jungle-deck — spec
@@ -33,6 +33,8 @@ layout, sites, or habits. The author's personal style file is not shipped.
   file names, and code keys (`deck:`, `data-kind="deck"`) stay as they are.
 - **No Hanja in user-facing speech.** Story stages are named 도입, 전개,
   전환, 마무리.
+- These two rules live in the `SKILL.md` router as the one wording rule for
+  every phase.
 
 ## Decisions
 
@@ -49,7 +51,7 @@ layout, sites, or habits. The author's personal style file is not shipped.
 | D9 | `build` uses a stage-runtime template (derived from the author's own stage-runtime deck, content removed): fixed slides, one active, `#N` hash, per-element `data-step`, speaker notes on `N`, in-browser edit mode on `E`, save on `Ctrl+S`. Build reads the style only from the `Design` section of BRIEF.md. Speaker notes are the confirmed script (D7 item 8) or a light suggested script; after build, the page notes are the script's source of truth, and BRIEF `Script` gets the line "build에서 노트로 옮김 — 이후 수정은 페이지에서". Images are copied from `evidence/` into `<slug>.assets/` (the original stays) and referenced as `<slug>.assets/<file>`; never `data:` URIs. Usage guidance: at the end of build, three lines in the terminal (how to open, the keys, what to do after an edit); in the page, a `?` key shortcut overlay and a one-time hint on first open. Both say "고친 뒤 저장하고 에이전트에게 말해 주세요". Template text: no "질문 받을게요"; the notes panel labels time as "참고 시간" and "참고 합계" |
 | D10 | The 2-minute limit is background, not a gate. No timer check. Do not cut content only to fit a timer. Slide-count and script-length numbers are suggestions |
 | D11 | `revise` is the main loop. The agent starts `scripts/serve.py` and the student opens the presentation through it. Save in the page writes straight into the source file by a three-way merge per section (see "Revise server" below). Default flow: the student saves, then tells the agent ("저장했어, 봐줘"); the agent reads the last line of `.serve.log` and the diff, and adjusts layout and evidence. Where the Claude Code `Monitor` tool works, the agent may also run `tail -n0 -F .serve.log` and react on its own. No in-page request notes. Fallback without the server (page opened as a file): `Ctrl+S` exports to the downloads folder and `scripts/pull_edits.py` merges it (two-way, with the "reload before editing again" rule) |
-| D12 | `publish`: if the save folder is in a git repo, ask once "이 저장소에 발표 자료를 커밋할까요?" and record the answer in BRIEF.md; before a commit, list the `evidence/` files and grep them for token-like strings; commit the presentation, `<slug>.assets/`, BRIEF.md, and `evidence/` by name. Then ask "이 발표 페이지를 따로 배포할 생각이 있어요?". No: stop at the local HTML and print its path. Yes: GitHub Pages is the only automated target (see "Pages" below). Another host: print the HTML path and stop. Copy the HTML and `<slug>.assets/` to `<pages_dir>/study/weekNN/` when the week is known, else `<pages_dir>/study/`, and `cmp` every file. A path collision stops `publish.py copy`, which names the file; the agent asks for another slug. Add the index card only when the week is known and `index.html` holds card markup of the built-in shape (`class="card"` with `data-week`); else skip it silently. Keep the back-to-index link only when `index.html` exists; its `href` is computed from the real depth below `pages_dir`. Commit in the Pages repo. Ask once, then push. Poll until the URL returns 200, `cmp` the live page, check each live asset URL for 200, and grep the index for the card URL when a card was added. Edit only the source, never the copy. Existing published pages keep their URLs |
+| D12 | `publish`: if the save folder is in a git repo, ask ONE question for commit and push, record the answer in BRIEF.md, then commit and push in a row with no second question; the no-deploy path asks the same single question (#26). Before a commit, list the `evidence/` files and grep them for token-like strings; commit the presentation, `<slug>.assets/`, BRIEF.md, and `evidence/` by name. Then ask "이 발표 페이지를 따로 배포할 생각이 있어요?". No: stop at the local HTML and print its path. Yes: GitHub Pages is the only automated target (see "Pages" below). Another host: print the HTML path and stop. Copy the HTML and `<slug>.assets/` to `<pages_dir>/study/weekNN/` when the week is known, else `<pages_dir>/study/`, and `cmp` every file. `copy` and `verify` compare against the published page (home-link `href` fitted to its depth), not the source bytes. A path collision stops `publish.py copy`, which names the file. `publish.py copy --replace` republishes over the same path, only when BRIEF "Pages copy path" equals it; old asset files stay and are listed to the student. A path taken by another page: the agent asks for another slug. Add the index card only when the week is known and `index.html` holds card markup of the built-in shape (`class="card"` with `data-week`); else skip it silently. Keep the back-to-index link only when `index.html` exists; its `href` is computed from the real depth below `pages_dir`. In the Pages repo: ask once, then commit and push in a row (#26). Poll until the URL returns 200, `cmp` the live page, check each live asset URL for 200, and check the index for the card when `--week` is given and the local `index.html` has card markup (#25). Edit only the source, never the copy. Existing published pages keep their URLs |
 | D13 | Ignore list in `<save folder>/.gitignore`: `_backup/`, `previews/`, `.impeccable/`, `.serve.json`, `.serve.log`. Never edit the repo root `.gitignore` |
 | D14 | Design feedback at `publish` branches on `source` in the `Design` section of BRIEF.md. Source is the student's DESIGN.md: show what this presentation changed against it as a diff; apply only the items the student picks. Any other source: ask once "이번 스타일을 DESIGN.md로 저장할까요? (새 파일 / 기존 파일 교체 / 아니요)" (Google Labs DESIGN.md format), and record the path in local.md. Never merge a brand's tokens into an existing DESIGN.md item by item |
 | D15 | Dependencies: use it if present, else a built-in fallback. `grilling` → inline round rules. `frontend-slides` → vendored files with the MIT notice. `claude-mem` → skip. `gh` → public REST API for public repos; skip the Project board; ask for the Pages source folder. `Monitor` → the student tells the agent after each save. Server not running → file export and `pull_edits.py`. No publish target → stop after a finished local HTML |
@@ -62,8 +64,8 @@ layout, sites, or habits. The author's personal style file is not shipped.
 | D22 | Shared context is general (see the next section). It must hold for C weeks, Pintos weeks, and the later Python and AI weeks. Evidence is real output the student ran — test results or terminal logs — never invented, and not tied to a named toolchain |
 | D23 | An existing BRIEF.md in the old format is recognized by `phase:` + `slug:` + `deck:` in its front matter. Migration adds `kind: jungle-deck`, and `created` from the date of the first commit that touched the BRIEF, else `updated`. At `phase: grill`, add each new slot (metadata, story frame questions, title slide, script, design) as `TBD` and keep the filled slots; the old `Conclusion` slot maps to the title slide. At `build` or later, change nothing else |
 | D24 | No author-specific values ship. The reference files use generic examples (`display_name: 홍길동`, `pages_repo: ~/my-pages`, `downloads_dir: ~/Downloads`). A contract test over `git ls-files`, excluding `SPEC.md`, `LICENSE`, and the README clone-URL line, fails on `benjohnbill`, `/mnt/c/Users/`, `krafton-jungle/`, and `week_repo_root` |
-| D25 | getdesign.md references (VoltAgent `awesome-design-md`, MIT, Google DESIGN.md format): list the brands from the repo through raw GitHub URLs; no `npx`. Recommend 2–3 by mood and link each preview at `getdesign.md/<brand>/design-md`. A brand that is not in the repo: the student downloads it from the site and gives the path. A file with no front matter is not recommended; if the student picks it, treat it as the student's own reference. Mapping into `stage.html` `:root`, first key present wins: `--paper` ← `canvas`; `--ink` ← `ink`; `--acc` ← `primary`; `--mut` ← `ink-mute`, `ink-muted`, `muted`, `mute`, `ink-subtle`, `body`; `--panel` ← `canvas-soft`, `surface-soft`, `surface-1`, `surface`; `--grid` ← `hairline`, `hairline-soft`; an empty chain → derive with `color-mix()`. If `primary` equals `ink` or has contrast below 3:1 against it, take the first saturated color (`link`, `brand-*`) and ask the student to confirm the accent. Font family only, with a Korean font appended and a note when a paid font falls back to a system font; keep the template's `clamp()` sizes and take only weight, letter spacing, and line height; drop components and decorative signatures. When the agent proposes a reference, it says first that only the color and type mood transfer, and points to `frontend-slides` presets for a full slide style. Measured coverage (2026-10-15, 84 files): no front matter 10/84; of 74 with front matter, `canvas-soft` 19, `ink-mute` 5, `primary == ink` 24, dark canvas 14 |
-| D26 | README holds the whole workflow as tables: per phase, what the skill asks and what the student decides. It also has a troubleshooting table (WSL `localhostForwarding=false`, server off, Monitor unavailable) |
+| D25 | getdesign.md references (VoltAgent `awesome-design-md`, MIT, Google DESIGN.md format): list the brands from the repo through raw GitHub URLs; no `npx`. Recommend 2–3 by mood and link each preview at `getdesign.md/<brand>/design-md`. A brand that is not in the repo: the student downloads it from the site and gives the path. A file with no front matter is not recommended; if the student picks it, treat it as the student's own reference. Mapping into `stage.html` `:root`, first key present wins: `--paper` ← `canvas`; `--ink` ← `ink`; `--acc` ← `primary`; `--mut` ← `ink-mute`, `ink-muted`, `muted`, `mute`, `ink-subtle`, `body`; `--panel` ← `canvas-soft`, `surface-soft`, `surface-1`, `surface`; `--grid` ← `hairline`, `hairline-soft`; an empty chain for `--paper` or `--ink` → keep the template value; for `--mut`, `--panel`, or `--grid` → the `color-mix()` of ink and paper. If `primary` equals `ink` or has contrast below 3:1 against `--paper` (the background), take the first saturated color (`link`, `brand-*`) that passes the same 3:1 test against `--paper`, and ask the student to confirm the accent; the fallback uses the same test (#27). Font family only, with a Korean font appended and a note when a paid font falls back to a system font; keep the template's `clamp()` sizes and take only weight, letter spacing, and line height; drop components and decorative signatures. When the agent proposes a reference, it says first that only the color and type mood transfer, and points to `frontend-slides` presets for a full slide style. Measured coverage (2026-10-15, 84 files): no front matter 10/84; of 74 with front matter, `canvas-soft` 19, `ink-mute` 5, `primary == ink` 24, dark canvas 14 |
+| D26 | README holds the whole workflow as tables: per phase, what the skill asks and what the student decides. The tables are a reader summary; SPEC wins on conflict. It also has a troubleshooting table (WSL `localhostForwarding=false`, server off, Monitor unavailable) |
 
 ## Revise server (D11)
 
@@ -74,7 +76,9 @@ layout, sites, or habits. The author's personal style file is not shipped.
   `{port, pid}` in `<save folder>/.serve.json`. Revise entry reuses the
   recorded server only when `GET /version` names this presentation's source;
   else it starts a new one and rewrites `.serve.json`. Started by the agent
-  at revise entry (`run_in_background`), stopped at publish entry. One URL
+  at the end of build (`run_in_background`; the "how to open" line needs
+  the saving address), reused at revise entry by that identity check,
+  stopped at publish entry. One URL
   only: `http://127.0.0.1:<port>/<slug>.html`.
 - **Security envelope.** Every request: `Host` must be `127.0.0.1:<port>` or
   `localhost:<port>`, else 403 (DNS rebinding). POST: one fixed endpoint; the
@@ -98,7 +102,9 @@ layout, sites, or habits. The author's personal style file is not shipped.
   `_backup/rejected-<stamp>.json`. Sections the student did not touch are
   never written.
 - **Page after a save.** 2xx: clear the autosave; adopt the returned hash
-  as `base_hash` and the current sections as `base`. 409: edit mode off;
+  as `base_hash` and the current sections as `base` only when the response
+  says `base_current: true` (decided under the save lock); else keep the
+  old base. 409: edit mode off;
   banner "에이전트 수정과 겹쳐요 (<ids>). 에이전트에게 '겹친 거 합쳐줘'라고 말해
   주세요"; when the response confirms the payload file, clear the
   autosave. The agent applies the student's text from the payload into the
@@ -108,7 +114,9 @@ layout, sites, or habits. The author's personal style file is not shipped.
 - **Autosave.** Stored by section id: `{base_hash, base, current}` for
   changed sections only. A stash (the file changed under the autosave)
   shows a notice with "복원" (= a normal three-way save of the stash) and
-  "파일로 내보내기". Never a DOM write by index. A `localStorage` failure
+  "파일로 내보내기". In file mode, 복원 is a three-way merge in the page;
+  slides that also changed in the file stay out, with an export notice.
+  Every notice has "닫기" (hides it for this load). Never a DOM write by index. A `localStorage` failure
   shows "자동 저장이 안 돼요 — 지금 Ctrl+S로 저장하세요"; never a silent catch.
 - **Change notice.** `GET /version` → `{slug, source, hash}`. The page
   polls every 3 s while served. Hash ≠ `base_hash`: no unsaved edits →
@@ -116,6 +124,8 @@ layout, sites, or habits. The author's personal style file is not shipped.
   저장(Ctrl+S)하세요". `R` is matched by `e.code === 'KeyR'` (works with a
   Korean IME) and keeps `#N`. After two failed polls: stop, show the
   server-off message, retry every 30 s.
+- **Agent writes.** Targeted edits on a fresh read of the source only, so
+  a student save between reads survives (#28).
 - **Log.** One line per save or 409 in `<save folder>/.serve.log`: time,
   section ids, backup or payload path.
 
@@ -147,7 +157,7 @@ rows are personal and live in local.md.
 ## Template tokens
 
 `templates/stage.html` derives `--hl`, `--edit-bg`, `--cap-b`, `--shadow`,
-and `--dim` from `--acc`, `--ink`, and `--paper` with `color-mix()`. A
+`--dim`, `--scrim`, and `--panel-b` from `--acc`, `--ink`, and `--paper` with `color-mix()`. A
 style source then sets only `--paper`, `--ink`, `--acc`, `--mut`,
 `--panel`, `--grid`, and the fonts. This also fixes the DESIGN.md path,
 where those five tokens stayed slate.
@@ -196,7 +206,8 @@ Automated (unittest, before any real use):
 - Autosave by id: 복원 after a slide split lands by id (JS unit test of the
   restore function, or a headless browser).
 - publish.py: the three URL forms; back-link depth with and without a
-  week; assets copied and compared; collision stop.
+  week; assets copied and compared; collision stop; `--replace`; copy and
+  verify against the fitted page; the verify card check (#25).
 - getdesign mapping over the 84 files: every file with front matter yields
   all mapped tokens or a derived value, and an accent different from `ink`.
 - The D24 grep test; contract tests for the reference files updated (the
@@ -239,7 +250,7 @@ T1–T13 cover the 2026-10-07 design.
 | T12 | Template page on benjohnbill.github.io (D18) | T11 |
 | T13 | Portability: downloads folder per OS, Python check, `python_cmd` in the docs (D20) | T10 |
 
-T14–T24 cover the 2026-10-15 revision. Issue number = ticket number.
+T14–T28 cover the 2026-10-15 revision. Issue number = ticket number.
 
 | ID | Ticket | Blocked by |
 |---|---|---|
@@ -254,6 +265,10 @@ T14–T24 cover the 2026-10-15 revision. Issue number = ticket number.
 | T22 | `publish.md`: commit question, folder `.gitignore`, deploy question, D14 branch | T18 |
 | T23 | `SKILL.md` router and README workflow tables | T19–T22 |
 | T24 | Manual verification of the revision | T23 |
+| T25 | `publish.py verify`: find the index card by a relative href | T18 |
+| T26 | `publish.md`: one question, then commit and push together | T22 |
+| T27 | `design.md`: accent contrast measured against `--paper` | T20 |
+| T28 | `revise.md`: agent writes must not overwrite a student save | T21 |
 
 ## Open items
 
