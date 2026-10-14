@@ -94,15 +94,16 @@ and recommends one; what it records is your pick or your rewrite.
 | Asks you to check the first draft | Move on to `revise` |
 
 Keys in the page: `→` next, `N` notes, `E` edit, `Ctrl+S` save, `?` all
-shortcuts. `R` reloads when the page asks for it.
+shortcuts. While editing, `Tab` opens the size buttons for the text you
+picked (text size, box width). `R` reloads when the page asks for it.
 
 ### revise — the main loop
 
 | The skill does or asks | You decide |
 |---|---|
-| — | Edit text and notes in the page (`E`), then save (`Ctrl+S`) and say "저장했어, 봐줘" |
+| — | Edit text, sizes, and notes in the page (`E`), then save (`Ctrl+S`) and say "저장했어, 봐줘" |
 | Reads the save, shows changes that look accidental | Keep or undo them |
-| Fixes layout, slide splits, and evidence around your words | A new slide's thesis (from its candidates) |
+| Fixes layout, slide splits, and evidence around your words and sizes | A new slide's thesis (from its candidates) |
 | Changes the page; the page asks you to press `R` | — |
 | Never asks whether you are done | Say "발표 자료 게시" to move on to `publish` |
 

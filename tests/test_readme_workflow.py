@@ -21,6 +21,10 @@ def section(text, heading, level="##"):
     return m.group(1)
 
 
+def flat_text(text):
+    return " ".join(text.split())
+
+
 def table_rows(text):
     lines = [l for l in text.splitlines() if l.startswith("|")]
     return [l for l in lines[2:] if not re.match(r"^\|[-| ]+\|$", l)]
@@ -45,6 +49,11 @@ class WorkflowTest(unittest.TestCase):
         order = [self.workflow.find(f"### {p} ") for p in PHASES]
         self.assertNotIn(-1, order, order)
         self.assertEqual(order, sorted(order))
+
+    def test_keys_name_the_size_buttons(self):
+        # #31: in edit mode, Tab opens the size buttons.
+        keys = flat_text(self.workflow[self.workflow.index("Keys in the page"):])
+        self.assertRegex(keys[:300], r"`Tab`.*(size|크기)")
 
     def test_user_facing_word_is_the_new_one(self):
         # SPEC "Words": the README offers the new phrases; the old ones only as "still work".

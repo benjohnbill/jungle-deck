@@ -115,6 +115,17 @@ class BuildReferenceTest(PathsExist, unittest.TestCase):
         self.assertIn("source_repo", body)
         self.assertRegex(body, r"(?i)never (invent|write|type) output")
 
+    def test_evidence_is_locked_and_boxes_resize(self):
+        # #31: edit mode edits every text except real run output.
+        body = flat(section(self.text, "Fill the slides"))
+        self.assertRegex(body, r"(?i)put `data-evidence` on each element that holds real run output")
+        self.assertRegex(body, r"(?i)explanatory code and diagram boxes .*stay editable")
+        self.assertIn("class `box`", body)
+        self.assertRegex(body, r"(?i)`jd-t-\*` and `jd-w-\*`.*student")
+        stage = STAGE.read_text(encoding="utf-8")
+        self.assertIn("hasAttribute('data-evidence')", stage)
+        self.assertIn("'.panel, .card, .box, .content-box, .container, [data-box]'", stage)
+
     def test_terms_and_notes(self):
         body = flat(section(self.text, "Fill the slides"))
         self.assertRegex(body, r"(?i)define .*on (the )?screen|on-screen definition")
@@ -211,6 +222,13 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
         for form in ["save <ids> backup=", "409 <ids> payload=", "save (no change)",
                      "restore <ids> backup=", "keep <ids>"]:
             self.assertIn(form, body)
+
+    def test_student_size_steps_are_kept(self):
+        # #31: size classes the student set are treated like the student's words.
+        body = flat(section(self.text, "Rules"))
+        self.assertRegex(body, r"(?i)size steps .*`jd-t-\*`.*`jd-w-\*`")
+        self.assertRegex(body, r"(?i)keep them in your layout pass")
+        self.assertRegex(body, r"(?i)cannot fit .*proposal rule")
 
     def test_restore_and_keep_lines(self):
         # #30: a restore means the agent overwrote a student save.

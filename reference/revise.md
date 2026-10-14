@@ -1,7 +1,7 @@
 ---
 scope: The revise phase (SPEC D11, D15): revise server, save in the page, read the change, adjust, conflicts, and the file-export fallback with pull_edits.py
 authority: SPEC.md D11, D15, "Revise server". CLI lines here must match `scripts/serve.py --help` and `scripts/pull_edits.py --help`; page behaviour must match templates/stage.html. tests/test_build_revise_reference.py checks them
-status: revised 2026-10-15 (#21, #28, #30); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
+status: revised 2026-10-15 (#21, #28, #30, #31); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
 ---
 
 # Revise phase
@@ -16,6 +16,7 @@ The agent owns the layout and the evidence.
 ## Rules
 
 - Do not overwrite the student's wording. After a save, the student's text is the source of truth. Change layout, size, steps, and evidence around it. If a layout fix needs other words, propose them under the proposal rule (`reference/grill.md`) and use the student's pick.
+- The student's size steps are the student's choice, like their words: the classes `jd-t-*` (text size) and `jd-w-*` (box width) that the page's size toolbar sets. Keep them in your layout pass. When a slide cannot fit with them, propose a change under the proposal rule and use the student's pick.
 - Keep every `<section id>` stable. Every save matches sections by id.
 - **Edit rule.** Change `<slug>.html` only with targeted edits on a fresh read. A student save can land between your read and your write. A write from an older read deletes that save. Use an edit that fails when the file changed since you read it. In Claude Code, that is the Edit tool. Never rewrite the whole file from an older read: no whole-file Write, and no script of your own that reads the page, changes it, and writes it back. `pull_edits.py --write` is the exception: it reads the page and writes it in one short call, and you guard it as in its fallback step. When an edit fails, re-read the page. Then read every line of `.serve.log` that is newer than your last read, not only the last line: a later `save (no change)` can hide an earlier save. Handle each save as in loop steps 4 and 5 first. Then redo the edit on the new text.
 - Every write to the page, by the server or by `pull_edits.py`, first copies the page to `_backup/<slug>.<YYYYmmdd-HHMMSS>.html`. `_backup/` is in the save folder's `.gitignore` (D13).
@@ -50,7 +51,7 @@ One pass is one round.
    - `<time> keep <ids>`: the student accepted your wording in those sections after the page flagged it. Nothing to merge. Note it in the round's row (step 7).
 5. **Read the diff.** Run `diff -u <backup> <save folder>/<slug>.html` with the backup path from the first new `save` line. That backup holds the page before all of the new saves. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Undo it only when the student says so, under the edit rule. An undo changes words the student saved, so the page then shows "에이전트 수정 뒤 내 저장 문구가 바뀌었어요": tell the student to press "그대로 두기".
 6. **Adjust.** Fix the layout and the evidence to match the student's edits, without changing their words. Every change follows the edit rule (Rules):
-   - A longer thesis or note: change the layout or the size token, not the text.
+   - A longer thesis or note: change the layout or the size token, not the text and not the student's size steps (Rules).
    - A slide that now goes over the density limits in `reference/build.md`: split it, or cut log lines. The thesis of a new slide follows the proposal rule (`reference/grill.md`).
    - New evidence that the student asks for: take it only from real runs saved in `evidence/`. Re-run the command in `source_repo` if the log is missing. Never invent output.
    - Check the render again at 1280×720 and 1920×1080, as in `reference/build.md`.

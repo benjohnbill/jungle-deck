@@ -29,6 +29,7 @@
     N                    : toggle the speaker-notes panel
     ?                    : shortcut overlay (Esc or ? closes it)
     E (or top-left corner): edit mode; click slide text or notes to change it
+    Tab (editing)        : size toolbar for the selected text (← → choose, Esc back)
     Ctrl+S               : save. Served by scripts/serve.py: write the changed slides
                            into the source file. Opened as a file: download the deck
     R                    : reload after an agent edit (only while its notice shows)
@@ -42,6 +43,11 @@
             to tie it to step 2.
     Ids   : keep <section id="sN">; saves, autosaves, and the merge-back script
             match edits by it, never by position.
+    Edit  : the outermost element with text of its own is editable (a <b> inside
+            such a <p> is edited with it). Put data-evidence on real run output to
+            lock it. A box the student may resize has one of the classes panel,
+            card, box, content-box, container, or the attribute data-box. SVG text
+            is locked: draw a diagram the student may edit with HTML boxes.
 -->
 
 <style>
@@ -442,10 +448,36 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
     font-size: var(--small-size); line-height: 1.5; word-break: keep-all;
     padding: .55em 1em;
 }
-.notice button {
+.notice button, #sizeBar button {
     margin-left: .7em; padding: .1em .7em; border: 0; cursor: pointer;
     font: inherit; font-weight: 600; background: var(--paper); color: var(--ink);
 }
+
+/* ===========================================
+   11. Size steps the student sets in edit mode (saved with the slide)
+   Text steps use zoom, not font-size: a font-size in em scales the parent's
+   size, and each element sets its own size token. Width steps lift the
+   max-width caps of .card and friends, so 100% means the whole space.
+   =========================================== */
+.jd-t-s2 { zoom: .75; }
+.jd-t-s1 { zoom: .87; }
+.jd-t-l1 { zoom: 1.15; }
+.jd-t-l2 { zoom: 1.3; }
+.jd-t-l3 { zoom: 1.5; }
+.jd-w-40 { width: 40%; }
+.jd-w-55 { width: 55%; }
+.jd-w-70 { width: 70%; }
+.jd-w-85 { width: 85%; }
+.jd-w-100 { width: 100%; }
+[class*="jd-w-"] { max-width: none; }
+#sizeBar {
+    position: fixed; z-index: 10001; display: flex; gap: .3em;
+    background: var(--ink); color: var(--paper); box-shadow: 0 8px 24px var(--shadow);
+    font-size: var(--small-size); padding: .3em;
+}
+#sizeBar[hidden], #sizeBar button[hidden] { display: none; }
+#sizeBar button { margin-left: 0; padding: .15em .6em; }
+#sizeBar button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -457,7 +489,7 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
 
 <div class="edit-hotzone" aria-hidden="true"></div>
 <button class="edit-toggle" id="editToggle" title="편집 모드 (E)" aria-label="편집 모드 켜기">✏️</button>
-<div class="edit-banner" id="editBanner">편집 모드 · 글자를 눌러 고치세요 · N 노트도 고칠 수 있어요 · Esc 커서 빼기 · Ctrl+S 저장 · E 끄기</div>
+<div class="edit-banner" id="editBanner">편집 모드 · 글자를 눌러 고치세요 · Tab 크기 조절 · N 노트도 고칠 수 있어요 · Esc 커서 빼기 · Ctrl+S 저장 · E 끄기</div>
 
 <!-- ============================================================
      01 · Title
@@ -491,7 +523,7 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
             </div>
             <div class="panel accent" data-step="2">
                 <div class="cap"><span>도구 · 명령</span><span class="side">실제 기록</span></div>
-<pre class="wrap">실행 결과나 로그를 그대로 붙인다
+<pre class="wrap" data-evidence>실행 결과나 로그를 그대로 붙인다
 <span class="c-hit">눈여겨볼 한 줄</span>
 <span class="c-dim">   ⋮   생략</span></pre>
             </div>
@@ -551,6 +583,7 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
             <dt>Home · End</dt><dd>처음 · 마지막 슬라이드</dd>
             <dt>N</dt><dd>발표자 노트 열고 닫기</dd>
             <dt>E</dt><dd>편집 모드: 글자나 노트를 눌러 고치기</dd>
+            <dt>Tab</dt><dd>편집 중: 고르던 글자의 크기 버튼으로 (글자 크기, 상자 너비) · ← → 고르기 · Esc 돌아가기</dd>
             <dt>Ctrl+S</dt><dd>저장: 에이전트가 연 주소면 원본 파일에, 파일로 열었으면 다운로드 폴더에</dd>
             <dt>R</dt><dd>에이전트가 고친 뒤 새로고침 (알림이 떴을 때)</dd>
             <dt>?</dt><dd>이 도움말 열고 닫기 (Esc로도 닫힘)</dd>
@@ -559,6 +592,13 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
     </div>
 </div>
 <div id="notices" role="status" aria-live="polite"></div>
+<div id="sizeBar" role="toolbar" aria-label="크기 조절" hidden>
+    <button data-kind="t" data-dir="-1" aria-label="글자 작게">글자 −</button>
+    <button data-kind="t" data-dir="1" aria-label="글자 크게">글자 +</button>
+    <button data-kind="w" data-dir="-1" aria-label="상자 좁게">상자 −</button>
+    <button data-kind="w" data-dir="1" aria-label="상자 넓게">상자 +</button>
+    <button data-kind="reset" aria-label="기본 크기">기본</button>
+</div>
 <div id="firstHint" hidden role="status">? 키로 단축키를 볼 수 있어요 · 고친 뒤 저장하고 에이전트에게 말해 주세요.</div>
 
 <script>
@@ -577,8 +617,6 @@ const total = slides.length;
 /* One key per deck file, so two decks on the same origin do not collide */
 const STORE = 'jungle-deck:' + location.pathname;
 const STASH = STORE + ':stash:';   /* + base hash: autosaves the file changed under */
-const EDITABLE = '.slide > .head span:not(.num), .slide > .foot span, '
-               + '.slide-content :is(h1, h2, .kicker, p, th, td, .cap span)';
 
 /* Strip edit traces (contenteditable, step state) */
 function scrub(root) {
@@ -652,13 +690,47 @@ function plainText(html) {
             : String.fromCodePoint(parseInt(e.slice(1), 10)))
         .replace(/\s+/g, '');
 }
-/* Student saves whose words the file no longer holds (an agent edit overwrote them).
-   Words, not markup: the agent may change the layout around them. An id gone from
-   the file is not flagged: there is nothing to restore into */
+/* The student's size steps in a section (jd-t-*, jd-w-*), in a fixed order */
+const sizeSteps = html => (html.match(/\bjd-[tw]-\w+/g) || []).sort().join(' ');
+/* Student saves whose words or size steps the file no longer holds (an agent edit
+   overwrote them). Not the rest of the markup: the agent may change the layout around
+   them. An id gone from the file is not flagged: there is nothing to restore into */
 function overwritten(saved, file) {
     return Object.keys(saved)
-        .filter(id => id in file && plainText(saved[id]) !== plainText(file[id]))
+        .filter(id => id in file && (plainText(saved[id]) !== plainText(file[id])
+                                     || sizeSteps(saved[id]) !== sizeSteps(file[id])))
         .sort();
+}
+
+/* Edit rules on element-like nodes (tagName, childNodes, children, hasAttribute, classList).
+   Editable: the outermost elements in a slide that hold text of their own. Locked: real
+   run output under [data-evidence], the notes (edited in the notes panel), the slide
+   number, and SVG (its text is not editable in place) */
+function editableIn(el, out = []) {
+    if (el.hasAttribute('data-evidence') || el.classList.contains('num') || /^svg$/i.test(el.tagName)
+        || (el.tagName === 'ASIDE' && el.classList.contains('notes'))) return out;
+    if (Array.from(el.childNodes).some(n => n.nodeType === 3 && n.nodeValue.trim())) out.push(el);
+    else Array.from(el.children).forEach(c => editableIn(c, out));
+    return out;
+}
+/* Size steps the student sets: classes from a fixed scale, saved with the section.
+   Text: null is the template size. Width: a share of the box's container */
+const TEXT_STEPS = ['jd-t-s2', 'jd-t-s1', null, 'jd-t-l1', 'jd-t-l2', 'jd-t-l3'];
+const WIDTH_STEPS = { 'jd-w-40': .4, 'jd-w-55': .55, 'jd-w-70': .7, 'jd-w-85': .85, 'jd-w-100': 1 };
+function textStep(classes, dir) {
+    const cur = TEXT_STEPS.indexOf(classes.find(c => TEXT_STEPS.includes(c)) ?? null);
+    const next = TEXT_STEPS[Math.max(0, Math.min(TEXT_STEPS.length - 1, cur + dir))];
+    return classes.filter(c => !TEXT_STEPS.includes(c)).concat(next ? [next] : []);
+}
+/* fraction: the box's width now, as a share of its container (used when no step is set) */
+function widthStep(classes, fraction, dir) {
+    const names = Object.keys(WIDTH_STEPS);
+    const set = classes.find(c => c in WIDTH_STEPS);
+    let next;
+    if (set) next = names[Math.max(0, Math.min(names.length - 1, names.indexOf(set) + dir))];
+    else if (dir < 0) next = names.filter(n => WIDTH_STEPS[n] < fraction - .01).pop() || names[0];
+    else next = names.find(n => WIDTH_STEPS[n] > fraction + .01) || names[names.length - 1];
+    return classes.filter(c => !(c in WIDTH_STEPS)).concat([next]);
 }
 /* pure: end */
 
@@ -1048,8 +1120,29 @@ slides.forEach((s, i) => {
 
 document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') { e.preventDefault(); save(); return; }
+    if (sizeBar.contains(e.target)) {   /* ← → move between its buttons; Esc goes back to the text */
+        const bs = Array.from(sizeBar.querySelectorAll('button:not([hidden])'));
+        const i = bs.indexOf(e.target);
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length].focus();
+        } else if ((e.key === 'Escape' || (e.key === 'Tab' && e.shiftKey)) && selected) {
+            e.preventDefault();
+            selected.focus();
+            if (caret) { getSelection().removeAllRanges(); getSelection().addRange(caret); }
+        } else if (e.key === 'Tab' && selected) {   /* on to the next text, as Tab from the text would */
+            const els = Array.from(document.querySelectorAll('.slide.active [contenteditable="true"]'));
+            const to = els[els.indexOf(selected) + 1];
+            if (to) { e.preventDefault(); to.focus(); }
+        }
+        return;   /* Space and Enter press the button */
+    }
     if (e.target.isContentEditable) {
-        if (e.key === 'Escape') e.target.blur();   /* leave the caret so arrows navigate again */
+        if (e.key === 'Tab' && !e.shiftKey && !sizeBar.hidden) {
+            e.preventDefault();
+            caret = getSelection().rangeCount ? getSelection().getRangeAt(0).cloneRange() : null;
+            sizeBar.querySelector('button:not([hidden])').focus();
+        } else if (e.key === 'Escape') e.target.blur();   /* leave the caret so arrows navigate again */
         return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1091,10 +1184,63 @@ function toggleEdit() {
     document.body.classList.toggle('edit-active', editing);
     editToggle.classList.toggle('active', editing);
     editToggle.setAttribute('aria-label', editing ? '편집 모드 끄기' : '편집 모드 켜기');
-    const els = [...document.querySelectorAll(EDITABLE), nBody];
-    els.forEach(el => editing ? el.setAttribute('contenteditable', 'true') : el.removeAttribute('contenteditable'));
+    if (editing) {
+        [...slides.flatMap(s => editableIn(s)), nBody].forEach(el => el.setAttribute('contenteditable', 'true'));
+        /* evidence inside an editable parent stays locked */
+        document.querySelectorAll('.slide [data-evidence]').forEach(el => el.setAttribute('contenteditable', 'false'));
+    } else document.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
     if (!editing && document.activeElement) document.activeElement.blur();
+    selected = null;
+    placeBar();
 }
+
+/* Size toolbar: the selected slide text gets text steps; its box gets width steps */
+const BOX = '.panel, .card, .box, .content-box, .container, [data-box]';
+const sizeBar = document.getElementById('sizeBar');
+let selected = null;
+const boxOf = el => { const b = el.closest(BOX), s = el.closest('.slide'); return b && s && b !== s && s.contains(b) ? b : null; };
+let caret = null;   /* where the caret was in the selected text when Tab left it */
+function placeBar() {
+    if (!editing || !selected) { sizeBar.hidden = true; return; }
+    sizeBar.querySelectorAll('[data-kind="w"]').forEach(b => { b.hidden = !boxOf(selected); });
+    sizeBar.hidden = false;
+    const r = selected.getBoundingClientRect();
+    sizeBar.style.top = Math.max(4, r.top - sizeBar.offsetHeight - 8) + 'px';
+    sizeBar.style.left = Math.max(4, Math.min(innerWidth - sizeBar.offsetWidth - 4, r.left)) + 'px';
+}
+function applySize(kind, dir) {
+    const box = boxOf(selected);
+    const strip = (el, steps) => { el.className = [...el.classList].filter(c => !steps.includes(c)).join(' '); };   /* 기본: no step */
+    if (kind === 't') selected.className = textStep([...selected.classList], dir).join(' ');
+    else if (kind === 'w' && box) {
+        /* share of the space the box gets at width 100% (a grid cell, a flex line) */
+        const now = box.getBoundingClientRect().width, inline = box.style.width;
+        box.style.width = '100%';
+        const full = box.getBoundingClientRect().width;
+        box.style.width = inline;
+        if (!box.getAttribute('style')) box.removeAttribute('style');
+        box.className = widthStep([...box.classList], now / full, dir).join(' ');
+    } else if (kind === 'reset') {
+        strip(selected, TEXT_STEPS);
+        if (box) strip(box, Object.keys(WIDTH_STEPS));
+    }
+    saveLocal();
+    placeBar();
+}
+document.addEventListener('focusin', e => {
+    if (sizeBar.contains(e.target)) return;
+    selected = editing && e.target.isContentEditable && e.target.closest('.slide') ? e.target : null;
+    placeBar();
+});
+document.addEventListener('focusout', e => {
+    const to = e.relatedTarget;
+    if (!to || !(sizeBar.contains(to) || to.isContentEditable)) { selected = null; placeBar(); }
+});
+sizeBar.addEventListener('mousedown', e => e.preventDefault());   /* the text keeps its caret */
+sizeBar.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b && selected) applySize(b.dataset.kind, Number(b.dataset.dir));
+});
 
 /* Any edit is saved at once */
 document.addEventListener('input', e => {
@@ -1128,6 +1274,8 @@ function exportFile(overrides) {
     doc.querySelector('#editToggle').setAttribute('aria-label', '편집 모드 켜기');
     doc.querySelector('#helpOverlay').setAttribute('hidden', '');
     doc.querySelector('#firstHint').setAttribute('hidden', '');
+    doc.querySelector('#sizeBar').setAttribute('hidden', '');
+    doc.querySelector('#sizeBar').removeAttribute('style');
     doc.querySelector('#notices').innerHTML = '';
     const meta = doc.querySelector('meta[name="jd-base"]');   /* served copy only: the export is a file */
     if (meta) meta.remove();

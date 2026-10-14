@@ -180,10 +180,99 @@ class OverwrittenSaveTest(unittest.TestCase):
         # Nothing to restore into; the server's backup still holds it.
         self.assertEqual(run(f"overwritten({json.dumps(self.SAVED)}, {{}})"), [])
 
+    def test_a_dropped_size_step_is_flagged(self):
+        # #31: the student's size steps count like their words.
+        saved = {"s2": '<h2 class="jd-t-l2">제목</h2><div class="panel jd-w-70">글</div>'}
+        self.assertEqual(self.flagged('<h2>제목</h2><div class="panel jd-w-70">글</div>', saved), ["s2"])
+        self.assertEqual(self.flagged('<h2 class="big jd-t-l2">제목</h2>'
+                                      '<div class="jd-w-70 panel wide">글</div>', saved), [])
+
     def test_ids_come_back_sorted(self):
         saved = {"s3": "<p>c</p>", "s1": "<p>a</p>"}
         self.assertEqual(run(f"overwritten({json.dumps(saved)}, "
                              f"{{s1: '<p>A</p>', s3: '<p>C</p>'}})"), ["s1", "s3"])
+
+
+# A tiny element tree for the edit rule: N(tag, attrs, *children), text as str.
+FAKE_DOM = """
+const N = (tag, attrs, ...kids) => {
+    const nodes = kids.map(k => typeof k === 'string' ? { nodeType: 3, nodeValue: k } : k);
+    return { nodeType: 1, tagName: tag.toUpperCase(), name: attrs.n || tag, childNodes: nodes,
+             children: nodes.filter(k => k.nodeType === 1),
+             hasAttribute: a => a in attrs,
+             classList: { contains: c => (attrs.class || '').split(' ').includes(c) } };
+};
+const names = els => els.map(e => e.name);
+"""
+
+
+def editable(tree):
+    return run(f"(() => {{ {FAKE_DOM} return names(editableIn({tree})); }})()")
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class EditRuleTest(unittest.TestCase):
+    """#31: every element with its own text in a slide is editable, the
+    outermost one only; real run output under [data-evidence] is locked."""
+
+    def test_outermost_element_with_its_own_text(self):
+        tree = ("N('section', {}, N('div', {class: 'head'}, N('span', {n: 'topic'}, '주제'),"
+                " N('span', {class: 'num', n: 'num'}, '01')),"
+                " N('div', {class: 'slide-content'}, N('h2', {n: 'h2'}, '제목 ', N('em', {}, '강조')),"
+                " N('ul', {}, N('li', {n: 'li'}, '항목'), N('li', {}, N('b', {n: 'b'}, '굵게')))))")
+        self.assertEqual(editable(tree), ["topic", "h2", "li", "b"])
+
+    def test_diagram_boxes_and_explanatory_code_are_editable(self):
+        tree = ("N('section', {}, N('div', {class: 'box', n: 'box'}, '상자 글'),"
+                " N('div', {class: 'panel'}, N('div', {class: 'cap'}, N('span', {n: 'cap'}, '코드')),"
+                " N('pre', {n: 'code'}, '/* 설명 */ ', N('span', {class: 'hl'}, 'x = 1'))))")
+        self.assertEqual(editable(tree), ["box", "cap", "code"])
+
+    def test_evidence_is_locked(self):
+        tree = ("N('section', {}, N('div', {class: 'panel'},"
+                " N('div', {class: 'cap'}, N('span', {n: 'cap'}, 'gdb')),"
+                " N('pre', {'data-evidence': '', n: 'log'}, 'Breakpoint 1', N('span', {}, 'hit'))),"
+                " N('figure', {'data-evidence': ''}, N('figcaption', {n: 'fig'}, '실행 화면')))")
+        self.assertEqual(editable(tree), ["cap"])
+
+    def test_notes_svg_and_whitespace_are_skipped(self):
+        tree = ("N('section', {}, N('div', {n: 'blank'}, '  \\n  ', N('p', {n: 'p'}, '글')),"
+                " N('svg', {}, N('text', {n: 'svgtext'}, '라벨')),"
+                " N('aside', {class: 'notes'}, N('p', {n: 'note'}, '노트')))")
+        self.assertEqual(editable(tree), ["p"])
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class SizeStepTest(unittest.TestCase):
+    """#31: size steps are classes from a fixed scale."""
+
+    def text(self, classes, d):
+        return run(f"textStep({json.dumps(classes)}, {d})")
+
+    def test_text_steps_walk_the_scale_from_the_default(self):
+        self.assertEqual(self.text(["punch"], 1), ["punch", "jd-t-l1"])
+        self.assertEqual(self.text(["punch", "jd-t-l1"], 1), ["punch", "jd-t-l2"])
+        self.assertEqual(self.text(["punch", "jd-t-l1"], -1), ["punch"])
+        self.assertEqual(self.text([], -1), ["jd-t-s1"])
+
+    def test_text_steps_stop_at_the_ends(self):
+        self.assertEqual(self.text(["jd-t-l3"], 1), ["jd-t-l3"])
+        self.assertEqual(self.text(["jd-t-s2"], -1), ["jd-t-s2"])
+
+    def width(self, classes, fraction, d):
+        return run(f"widthStep({json.dumps(classes)}, {fraction}, {d})")
+
+    def test_width_steps_start_from_the_measured_width(self):
+        # No class yet: snap to the next step past the box's width now.
+        self.assertEqual(self.width(["panel"], 1.0, -1), ["panel", "jd-w-85"])
+        self.assertEqual(self.width(["panel"], 0.6, 1), ["panel", "jd-w-70"])
+        self.assertEqual(self.width(["panel"], 0.6, -1), ["panel", "jd-w-55"])
+
+    def test_width_steps_walk_and_stop_at_the_ends(self):
+        self.assertEqual(self.width(["box", "jd-w-55"], 0.55, 1), ["box", "jd-w-70"])
+        self.assertEqual(self.width(["jd-w-100"], 1.0, 1), ["jd-w-100"])
+        self.assertEqual(self.width(["jd-w-40"], 0.4, -1), ["jd-w-40"])
+        self.assertEqual(self.width(["box"], 0.3, -1), ["box", "jd-w-40"])
 
 
 class ServedModeHooksTest(unittest.TestCase):
@@ -263,6 +352,58 @@ class ServedModeHooksTest(unittest.TestCase):
         js = js[:js.index("\n}\n")]
         self.assertIn("sectionHTML(document.getElementById(id)) === base[id]", js)
         self.assertNotIn("applySections(sections, slides)", js)
+
+    def test_edit_mode_uses_the_edit_rule(self):
+        js = self.text[self.text.index("function toggleEdit"):]
+        js = js[:js.index("\n}\n")]
+        self.assertIn("slides.flatMap(s => editableIn(s))", js)
+        self.assertNotIn("const EDITABLE", self.text)
+
+    def test_size_toolbar_markup(self):
+        m = re.search(r'<div id="sizeBar"[^>]*>(.*?)</div>', self.text, re.S)
+        self.assertTrue(m, "no #sizeBar")
+        tag = m.group(0)[:m.group(0).index(">")]
+        for s in ['role="toolbar"', 'aria-label="크기 조절"', "hidden"]:
+            self.assertIn(s, tag)
+        for label in ["글자 작게", "글자 크게", "상자 좁게", "상자 넓게", "기본 크기"]:
+            self.assertRegex(m.group(1), rf'<button[^>]*aria-label="{label}"')
+
+    def test_every_step_class_has_a_rule(self):
+        css = self.text[:self.text.index("</style>")]
+        pure = pure_block()
+        steps = re.findall(r"'(jd-[tw]-\w+)'", pure)
+        self.assertEqual(len(steps), 10)
+        for c in steps:
+            self.assertRegex(css, rf"\.{c}\s*\{{", f"no CSS rule for {c}")
+
+    def test_toolbar_keyboard_access(self):
+        js = self.text[self.text.index("document.addEventListener('keydown'"):]
+        js = js[:js.index("\n});\n")]
+        self.assertIn("e.key === 'Tab'", js)
+        self.assertIn("sizeBar.contains(e.target)", js)
+        # Tab from the toolbar goes on to the next text; Shift+Tab and Esc go back.
+        self.assertIn("els[els.indexOf(selected) + 1]", js)
+        self.assertIn("getSelection().addRange(caret)", js)
+
+    def test_evidence_inside_an_editable_parent_stays_locked(self):
+        js = self.text[self.text.index("function toggleEdit"):]
+        js = js[:js.index("\n}\n")]
+        self.assertIn("querySelectorAll('.slide [data-evidence]').forEach(el => el.setAttribute('contenteditable', 'false'))", js)
+
+    def test_width_steps_lift_max_width_caps(self):
+        self.assertIn('[class*="jd-w-"] { max-width: none; }', self.text)
+
+    def test_size_change_autosaves_and_export_hides_the_bar(self):
+        js = self.text[self.text.index("function applySize"):]
+        self.assertIn("saveLocal()", js[:js.index("\n}\n")])
+        exp = self.text[self.text.index("function exportFile"):]
+        self.assertIn("#sizeBar", exp[:exp.index("\n}\n")])
+
+    def test_help_names_the_size_buttons(self):
+        help_box = self.text[self.text.index('<div id="helpOverlay"'):]
+        help_box = help_box[:help_box.index("</dl>")]
+        self.assertIn("<dt>Tab</dt>", help_box)
+        self.assertIn("크기", help_box)
 
     def test_no_restore_by_index(self):
         self.assertNotIn("saved.data[i]", self.text)
