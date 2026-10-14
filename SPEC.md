@@ -81,7 +81,7 @@ layout, sites, or habits. The author's personal style file is not shipped.
   stopped at publish entry. One URL
   only: `http://127.0.0.1:<port>/<slug>.html`.
 - **Security envelope.** Every request: `Host` must be `127.0.0.1:<port>` or
-  `localhost:<port>`, else 403 (DNS rebinding). POST: one fixed endpoint; the
+  `localhost:<port>`, else 403 (DNS rebinding). POST: `/save` and `/keep` only, same envelope; the
   write target is the source file fixed at startup, and the client never
   sends a path. POST needs the custom header and an `Origin` of exactly
   `http://127.0.0.1:<port>` or `http://localhost:<port>`; a missing or
@@ -126,8 +126,24 @@ layout, sites, or habits. The author's personal style file is not shipped.
   server-off message, retry every 30 s.
 - **Agent writes.** Targeted edits on a fresh read of the source only, so
   a student save between reads survives (#28).
-- **Log.** One line per save or 409 in `<save folder>/.serve.log`: time,
-  section ids, backup or payload path.
+- **Section ids.** A posted id must match `[\w.:-]+` so it cannot forge a
+  log line; a bad id gets 400 and the payload is kept in
+  `_backup/rejected-*` (#30).
+- **Restore signal (#30).** After a 2xx or a kept 409, the page stores the
+  sent sections in localStorage. On load and on each detected change it
+  compares their words (whitespace removed) and size steps with the file.
+  A difference shows "에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (<ids>)"
+  with 복원 (POST `/save` with a restore flag), 그대로 두기 (POST `/keep`),
+  and 닫기. A layout-only change is not flagged. A slide the agent deleted
+  is not flagged; its server backup remains.
+- **Edit scope (#31).** In edit mode every element with its own text inside a
+  slide is editable; anything inside `[data-evidence]` stays locked, and SVG
+  text stays locked. A toolbar sets text steps `jd-t-*` (zoom 0.75, 0.875,
+  1, 1.25, 1.5) and box width steps `jd-w-*`; it is one Tab stop. The agent
+  keeps the student's steps like the student's words.
+- **Log.** One line per event in `<save folder>/.serve.log`: `save <ids>
+  backup=`, `save (no change)`, `409 <ids> payload=`, `restore <ids>
+  backup=`, `restore (no change)`, `keep <ids>`, each with its time.
 
 ## Pages (D12)
 
