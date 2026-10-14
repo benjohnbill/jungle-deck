@@ -182,10 +182,11 @@ class OverwrittenSaveTest(unittest.TestCase):
 
     def test_a_dropped_size_step_is_flagged(self):
         # #31: the student's size steps count like their words.
-        saved = {"s2": '<h2 class="jd-t-l2">제목</h2><div class="panel jd-w-70">글</div>'}
-        self.assertEqual(self.flagged('<h2>제목</h2><div class="panel jd-w-70">글</div>', saved), ["s2"])
+        saved = {"s2": '<h2 class="jd-t-l2">제목</h2><div class="panel jd-w-s1">글</div>'}
+        self.assertEqual(self.flagged('<h2>제목</h2><div class="panel jd-w-s1">글</div>', saved), ["s2"])
+        self.assertEqual(self.flagged('<h2 class="jd-t-l2">제목</h2><div class="panel">글</div>', saved), ["s2"])
         self.assertEqual(self.flagged('<h2 class="big jd-t-l2">제목</h2>'
-                                      '<div class="jd-w-70 panel wide">글</div>', saved), [])
+                                      '<div class="jd-w-s1 panel wide">글</div>', saved), [])
 
     def test_ids_come_back_sorted(self):
         saved = {"s3": "<p>c</p>", "s1": "<p>a</p>"}
@@ -244,35 +245,42 @@ class EditRuleTest(unittest.TestCase):
 
 @unittest.skipUnless(NODE, "node is not installed")
 class SizeStepTest(unittest.TestCase):
-    """#31: size steps are classes from a fixed scale."""
+    """#31: size steps are classes from a fixed scale of ±2 (user said 2026-10-15)."""
 
-    def text(self, classes, d):
-        return run(f"textStep({json.dumps(classes)}, {d})")
+    def step(self, classes, steps, d):
+        return run(f"step({json.dumps(classes)}, {steps}, {d})")
 
-    def test_text_steps_walk_the_scale_from_the_default(self):
-        self.assertEqual(self.text(["punch"], 1), ["punch", "jd-t-l1"])
-        self.assertEqual(self.text(["punch", "jd-t-l1"], 1), ["punch", "jd-t-l2"])
-        self.assertEqual(self.text(["punch", "jd-t-l1"], -1), ["punch"])
-        self.assertEqual(self.text([], -1), ["jd-t-s1"])
+    def test_text_steps_walk_the_scale_from_the_template_size(self):
+        self.assertEqual(self.step(["punch"], "TEXT_STEPS", 1), ["punch", "jd-t-l1"])
+        self.assertEqual(self.step(["punch", "jd-t-l1"], "TEXT_STEPS", 1), ["punch", "jd-t-l2"])
+        self.assertEqual(self.step(["punch", "jd-t-l1"], "TEXT_STEPS", -1), ["punch"])
+        self.assertEqual(self.step([], "TEXT_STEPS", -1), ["jd-t-s1"])
 
-    def test_text_steps_stop_at_the_ends(self):
-        self.assertEqual(self.text(["jd-t-l3"], 1), ["jd-t-l3"])
-        self.assertEqual(self.text(["jd-t-s2"], -1), ["jd-t-s2"])
+    def test_steps_stop_at_plus_and_minus_two(self):
+        for steps, top, bottom in [("TEXT_STEPS", "jd-t-l2", "jd-t-s2"),
+                                   ("BOX_STEPS", "jd-w-l2", "jd-w-s2")]:
+            with self.subTest(steps=steps):
+                self.assertEqual(self.step([top], steps, 1), [top])
+                self.assertEqual(self.step([bottom], steps, -1), [bottom])
+                classes = []
+                for _ in range(5):
+                    classes = self.step(classes, steps, 1)
+                self.assertEqual(classes, [top])
 
-    def width(self, classes, fraction, d):
-        return run(f"widthStep({json.dumps(classes)}, {fraction}, {d})")
+    def test_zero_goes_back_to_the_template_size(self):
+        self.assertEqual(self.step(["box", "jd-w-l1"], "BOX_STEPS", 0), ["box"])
 
-    def test_width_steps_start_from_the_measured_width(self):
-        # No class yet: snap to the next step past the box's width now.
-        self.assertEqual(self.width(["panel"], 1.0, -1), ["panel", "jd-w-85"])
-        self.assertEqual(self.width(["panel"], 0.6, 1), ["panel", "jd-w-70"])
-        self.assertEqual(self.width(["panel"], 0.6, -1), ["panel", "jd-w-55"])
-
-    def test_width_steps_walk_and_stop_at_the_ends(self):
-        self.assertEqual(self.width(["box", "jd-w-55"], 0.55, 1), ["box", "jd-w-70"])
-        self.assertEqual(self.width(["jd-w-100"], 1.0, 1), ["jd-w-100"])
-        self.assertEqual(self.width(["jd-w-40"], 0.4, -1), ["jd-w-40"])
-        self.assertEqual(self.width(["box"], 0.3, -1), ["box", "jd-w-40"])
+    def test_the_scale_is_pinned(self):
+        # Five levels each; the factors live once, as :root variables.
+        self.assertEqual(run("TEXT_STEPS"), ["jd-t-s2", "jd-t-s1", None, "jd-t-l1", "jd-t-l2"])
+        self.assertEqual(run("BOX_STEPS"), ["jd-w-s2", "jd-w-s1", None, "jd-w-l1", "jd-w-l2"])
+        root = TEMPLATE.read_text(encoding="utf-8")
+        root = root[root.index(":root {"):]
+        root = root[:root.index("\n}")]
+        factors = dict(re.findall(r"--(jd-[tw]-[sl]\d):\s*([\d.]+);", root))
+        self.assertEqual(factors, {
+            "jd-t-s2": ".75", "jd-t-s1": ".875", "jd-t-l1": "1.25", "jd-t-l2": "1.5",
+            "jd-w-s2": ".75", "jd-w-s1": ".875", "jd-w-l1": "1.125", "jd-w-l2": "1.25"})
 
 
 class ServedModeHooksTest(unittest.TestCase):
@@ -347,11 +355,18 @@ class ServedModeHooksTest(unittest.TestCase):
         conflict = js[js.index("r.status === 409"):]
         self.assertIn("rememberSaved(payload.sections);", conflict[:conflict.index("} else {")])
 
-    def test_restore_keeps_unsaved_edits_on_screen(self):
+    def test_restore_waits_for_unsaved_edits_to_be_saved(self):
         js = self.text[self.text.index("async function restoreSaved"):]
         js = js[:js.index("\n}\n")]
-        self.assertIn("sectionHTML(document.getElementById(id)) === base[id]", js)
-        self.assertNotIn("applySections(sections, slides)", js)
+        self.assertIn("sectionHTML(document.getElementById(id)) !== base[id]", js)
+        self.assertLess(js.index("if (dirty.length)"), js.index("await send("))
+        self.assertIn("먼저 저장(Ctrl+S)하세요", js)
+
+    def test_keep_drops_the_guarded_entry(self):
+        js = self.text[self.text.index("async function keepAgent"):]
+        js = js[:js.index("\n}\n")]
+        self.assertIn("delete saved[id]", js)
+        self.assertNotIn("rememberSaved", js)
 
     def test_edit_mode_uses_the_edit_rule(self):
         js = self.text[self.text.index("function toggleEdit"):]
@@ -368,13 +383,19 @@ class ServedModeHooksTest(unittest.TestCase):
         for label in ["글자 작게", "글자 크게", "상자 좁게", "상자 넓게", "기본 크기"]:
             self.assertRegex(m.group(1), rf'<button[^>]*aria-label="{label}"')
 
-    def test_every_step_class_has_a_rule(self):
+    def test_every_text_step_has_a_rule_on_its_variable(self):
         css = self.text[:self.text.index("</style>")]
-        pure = pure_block()
-        steps = re.findall(r"'(jd-[tw]-\w+)'", pure)
-        self.assertEqual(len(steps), 10)
-        for c in steps:
-            self.assertRegex(css, rf"\.{c}\s*\{{", f"no CSS rule for {c}")
+        for c in re.findall(r"'(jd-t-\w+)'", pure_block()):
+            self.assertIn(f".{c} {{ zoom: var(--{c}); }}", css)
+
+    def test_box_width_is_measured_clamped_and_never_saved(self):
+        js = self.text[self.text.index("function fitBoxes"):]
+        js = js[:js.index("\n}\n")]
+        self.assertIn("getPropertyValue('--' + s)", js)
+        self.assertIn("Math.min(r.width * parseFloat(", js)
+        self.assertIn("right - r.left", js)
+        scrub = self.text[self.text.index("function scrub"):]
+        self.assertIn("removeProperty('--box-w')", scrub[:scrub.index("\n}\n")])
 
     def test_toolbar_keyboard_access(self):
         js = self.text[self.text.index("document.addEventListener('keydown'"):]
@@ -391,7 +412,7 @@ class ServedModeHooksTest(unittest.TestCase):
         self.assertIn("querySelectorAll('.slide [data-evidence]').forEach(el => el.setAttribute('contenteditable', 'false'))", js)
 
     def test_width_steps_lift_max_width_caps(self):
-        self.assertIn('[class*="jd-w-"] { max-width: none; }', self.text)
+        self.assertIn('.slide [style*="--box-w"] { width: var(--box-w); max-width: none; }', self.text)
 
     def test_size_change_autosaves_and_export_hides_the_bar(self):
         js = self.text[self.text.index("function applySize"):]

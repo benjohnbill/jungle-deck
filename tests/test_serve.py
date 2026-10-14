@@ -428,11 +428,11 @@ class RestoreSignalTest(Saving):
     def test_size_steps_are_written_with_the_section(self):
         # #31: the student's size classes are part of the saved section.
         new_s2 = self.edited("s2", "<h2>", '<h2 class="jd-t-l2">').replace(
-            'class="panel"', 'class="panel jd-w-70"')
+            'class="panel"', 'class="panel jd-w-s1"')
         self.assertEqual(self.save({"s2": new_s2})[0], 200)
         text = self.deck.read_text(encoding="utf-8")
         self.assertIn('<h2 class="jd-t-l2">', text)
-        self.assertIn('class="panel jd-w-70"', text)
+        self.assertIn('class="panel jd-w-s1"', text)
 
     def test_ids_with_dots_and_digits_still_reach_the_merge(self):
         # Only whitespace and commas are refused; an unknown id is a 409 as before.
