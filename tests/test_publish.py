@@ -1,4 +1,4 @@
-"""Tests for scripts/publish.py (SPEC D12): copy, cmp, poll, card grep.
+"""Tests for scripts/publish.py (SPEC D12): copy, cmp, poll, card link.
 
 Run: python3 -m unittest discover -s tests
 No real network: the live site is a local http.server thread.
@@ -374,12 +374,13 @@ class Verify(Workspace):
         (self.pages / "index.html").write_text(
             '<a class="card" data-week="2" href="https://x/old.html">old</a>')
 
-    def go_live(self, deck=DECK, card=True, path="study/week03/sample-deck.html"):
+    def go_live(self, deck=DECK, card=True, path="study/week03/sample-deck.html", index=None):
         live = self.site / path
         live.parent.mkdir(parents=True, exist_ok=True)
         live.write_bytes(deck)
         href = self.deck_url if card else "elsewhere.html"
-        (self.site / "index.html").write_text(f'<a class="card two" href="{href}">x</a>')
+        index = index or f'<a class="card two" href="{href}">x</a>'
+        (self.site / "index.html").write_text(index)
 
     def verify(self, timeout="2", interval="0.05", week=("--week", "3")):
         return run("verify", "--local", str(self.local), "--deck", str(self.deck),
@@ -466,6 +467,38 @@ class Verify(Workspace):
         self.assertIn("card", err)
         self.assertIn(self.deck_url, err)
         self.assertEqual(len(err.strip().splitlines()), 1)
+
+    def test_card_href_may_be_absolute_root_relative_or_index_relative(self):
+        for href in (self.deck_url, "/study/week03/sample-deck.html",
+                     "study/week03/sample-deck.html", "./study/week03/sample-deck.html"):
+            with self.subTest(href=href):
+                self.go_live(index=f'<a class="card" href="{href}">x</a>')
+                code, _, err = self.verify()
+                self.assertEqual(code, 0, err)
+
+    def test_card_href_forms_a_hand_edited_index_may_use(self):
+        for anchor in ("<a class='card' href='study/week03/sample-deck.html'>",
+                       '<a class="card" href = " study/week03/sample-deck.html ">',
+                       '<a class="card" href="study/week03/sample%2Ddeck.html">',
+                       '<a class="card" href="study/week03/sample&#45;deck.html">',
+                       '<a class="card" href="study/week03/sample-deck.html#2">',
+                       '<a class="card" href="study/week03/sample-deck.html?v=1">',
+                       '<a href="">top</a><a class="card" href="study/week03/sample-deck.html">'):
+            with self.subTest(anchor=anchor):
+                self.go_live(index=anchor + "x</a>")
+                code, _, err = self.verify()
+                self.assertEqual(code, 0, err)
+
+    def test_card_href_must_resolve_to_the_page_itself(self):
+        for href in ("study/week03/sample-deck.html.bak", "/other/study/week03/sample-deck.html",
+                     "week03/sample-deck.html", ""):
+            with self.subTest(href=href):
+                self.go_live(index=f'<a class="card" href="{href}">x</a>')
+                code, _, err = self.verify(timeout="0.3")
+                self.assertNotEqual(code, 0)
+                self.assertIn("card", err)
+                self.assertIn(self.deck_url, err)
+                self.assertEqual(len(err.strip().splitlines()), 1)
 
     def test_never_live_times_out_nonzero_with_elapsed(self):
         code, _, err = self.verify(timeout="0.3")

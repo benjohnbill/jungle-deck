@@ -7,7 +7,8 @@
           pages_dir, or dropped when pages_dir has no index.html
   verify  after the human push: poll the page URL until 200 and the live
           bytes match the published copy, check each asset URL for 200, then
-          grep the index for the page URL when a card was expected
+          check that an index link resolves to the page URL when a card was
+          expected
 
 This script never runs git. Settings come from jungle-deck.local.md
 (field meanings: reference/local-template.md).
@@ -20,11 +21,14 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from html import unescape
 from pathlib import Path
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 HOME_LINK = re.compile(rb'<a\b[^>]*\bclass="[^"]*\bhome-link\b[^"]*"[^>]*>.*?</a>', re.S)
-HREF = re.compile(rb'href="[^"]*"')
+HREF = re.compile(rb'href="[^"]*"')  # the home link's href, as the template writes it
+# Any href in a hand-edited index.html: either quote style, spaces around "="
+ANY_HREF = re.compile(rb"""\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 # Card markup of the built-in shape: any tag with class "card" and data-week (D12)
 CARD = re.compile(rb'<\w+\b(?=[^>]*\bclass="(?:[^"]*\s)?card[\s"])(?=[^>]*\bdata-week=)[^>]*>')
 
@@ -162,6 +166,21 @@ def expects_card(args, served):
     return args.week is not None and index.is_file() and bool(CARD.search(index.read_bytes()))
 
 
+def links_to(index, index_url, page_url):
+    """True when an href in index resolves to page_url: absolute, root-relative, or relative.
+
+    Query and fragment are ignored; percent-escapes and HTML entities are decoded."""
+    def page_of(url):
+        parts = urllib.parse.urlsplit(url)
+        return parts.scheme, parts.netloc, urllib.parse.unquote(parts.path)
+    for m in ANY_HREF.finditer(index):
+        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        href = unescape(raw.decode("utf-8", "replace")).strip()
+        if page_of(urllib.parse.urljoin(index_url, href)) == page_of(page_url):
+            return True
+    return False
+
+
 def live_state(page_url, asset_urls, index_url, local_page):
     """Return None when the live site is right, else the reason it is not."""
     bust = f"?v={time.time_ns()}"  # skip the Pages CDN cache (max-age 600)
@@ -179,7 +198,7 @@ def live_state(page_url, asset_urls, index_url, local_page):
     status, index = fetch(index_url + bust)
     if status != 200:
         return f"index {index_url} returned {status or 'no response'}"
-    if page_url.encode() not in index:
+    if not links_to(index, index_url, page_url):
         return f"index {index_url} has no card linking {page_url}"
     return None
 
