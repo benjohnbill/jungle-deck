@@ -134,8 +134,15 @@ layout, sites, or habits. The author's personal style file is not shipped.
   compares their words (whitespace removed) and size steps with the file.
   A difference shows "에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (<ids>)"
   with 복원 (POST `/save` with a restore flag), 그대로 두기 (POST `/keep`),
-  and 닫기. A layout-only change is not flagged. A slide the agent deleted
-  is not flagged; its server backup remains.
+  and 닫기. A layout-only change is not flagged. A saved slide the file no
+  longer holds shows "에이전트가 슬라이드를 지웠어요 (<ids>)" once, with 닫기
+  only, and the page drops it from its saved map (#32).
+- **Overflow (#32).** After load, once typing settles, and on resize, the
+  page marks (in edit mode) every box whose content is larger than the box or
+  reaches past the box or slide that clips it, and shows "글이 상자를 넘쳐요
+  (<ids>) — 에이전트에게 레이아웃 조정을 부탁하세요" with 닫기. It never fixes
+  it. Evidence, SVG, and the width of a `<pre>` that cuts long lines are not
+  checked.
 - **Edit scope (#31).** In edit mode every element with its own text inside a
   slide is editable; anything inside `[data-evidence]` stays locked, and SVG
   text stays locked. A toolbar sets text steps `jd-t-*` (zoom 0.75, 0.875,
