@@ -60,6 +60,13 @@ class PublishReferenceTest(unittest.TestCase):
         self.assertTrue(m, "no '## Rules' section")
         return flat(m.group(1))
 
+    def test_stops_the_revise_server_before_the_steps(self):
+        # SPEC "Revise server": started at revise entry, stopped at publish entry.
+        head = flat(self.text[:self.text.index("## Rules")])
+        self.assertRegex(head, r"(?i)stop the revise server")
+        self.assertIn(".serve.json", head)
+        self.assertIn("/version", head)
+
     def test_steps_in_d12_order(self):
         found = re.findall(r"^### (\d+)\. (.+)$", self.text, re.M)
         titles = [t for _, t in found]

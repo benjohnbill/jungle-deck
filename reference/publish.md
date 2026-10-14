@@ -15,6 +15,12 @@ Read `jungle-deck.local.md` first (keys: `reference/local-template.md`).
 Record each answer and result in the `Publish` section of `BRIEF.md` when
 you get it. On resume, a recorded answer is settled: do not ask it again.
 
+Stop the revise server first (SPEC "Revise server"). If this session started
+it, stop that background task. Else read `{port, pid}` from
+`<save>/.serve.json`; when `http://127.0.0.1:<port>/version` answers with
+this page as `source`, end that pid (`kill <pid>`; on Windows
+`taskkill /PID <pid> /F`). No answer: the server is already off.
+
 ## Rules
 
 - Stage named files only. Never use `git add -A`, `git add .`, or
