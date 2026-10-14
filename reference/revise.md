@@ -1,7 +1,7 @@
 ---
 scope: The revise phase (SPEC D11, D15): revise server, save in the page, read the change, adjust, conflicts, and the file-export fallback with pull_edits.py
 authority: SPEC.md D11, D15, "Revise server". CLI lines here must match `scripts/serve.py --help` and `scripts/pull_edits.py --help`; page behaviour must match templates/stage.html. tests/test_build_revise_reference.py checks them
-status: revised 2026-10-15 (#21); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
+status: revised 2026-10-15 (#21, #28); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
 ---
 
 # Revise phase
@@ -17,6 +17,7 @@ The agent owns the layout and the evidence.
 
 - Do not overwrite the student's wording. After a save, the student's text is the source of truth. Change layout, size, steps, and evidence around it. If a layout fix needs other words, propose them under the proposal rule (`reference/grill.md`) and use the student's pick.
 - Keep every `<section id>` stable. Every save matches sections by id.
+- **Edit rule.** Change `<slug>.html` only with targeted edits on a fresh read. A student save can land between your read and your write. A write from an older read deletes that save. Use an edit that fails when the file changed since you read it. In Claude Code, that is the Edit tool. Never rewrite the whole file from an older read: no whole-file Write, and no script of your own that reads the page, changes it, and writes it back. `pull_edits.py --write` is the exception: it reads the page and writes it in one short call, and you guard it as in its fallback step. When an edit fails, re-read the page. Then read every line of `.serve.log` that is newer than your last read, not only the last line: a later `save (no change)` can hide an earlier save. Handle each save as in loop steps 4 and 5 first. Then redo the edit on the new text.
 - Every write to the page, by the server or by `pull_edits.py`, first copies the page to `_backup/<slug>.<YYYYmmdd-HHMMSS>.html`. `_backup/` is in the save folder's `.gitignore` (D13).
 
 ## Start the server
@@ -45,8 +46,8 @@ One pass is one round.
    - `<time> save <ids> backup=<path>`: the server wrote those sections. Go to step 5.
    - `<time> save (no change)`: nothing changed. Ask the student whether they saved after the edit.
    - `<time> 409 <ids> payload=<path>`: nothing was written. Go to "When the save is refused".
-5. **Read the diff.** Run `diff -u <backup> <save folder>/<slug>.html` with the backup path from the log line. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Undo it only when the student says so.
-6. **Adjust.** Fix the layout and the evidence to match the student's edits, without changing their words:
+5. **Read the diff.** Run `diff -u <backup> <save folder>/<slug>.html` with the backup path from the log line. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Undo it only when the student says so, under the edit rule.
+6. **Adjust.** Fix the layout and the evidence to match the student's edits, without changing their words. Every change follows the edit rule (Rules):
    - A longer thesis or note: change the layout or the size token, not the text.
    - A slide that now goes over the density limits in `reference/build.md`: split it, or cut log lines. The thesis of a new slide follows the proposal rule (`reference/grill.md`).
    - New evidence that the student asks for: take it only from real runs saved in `evidence/`. Re-run the command in `source_repo` if the log is missing. Never invent output.
@@ -71,7 +72,7 @@ While served, the page checks the source every 3 s. After two failed checks it c
 
 **409: the edit overlaps yours.** The page turns edit mode off and shows "에이전트 수정과 겹쳐요 (<ids>). 에이전트에게 '겹친 거 합쳐줘'라고 말해 주세요". The log line names the payload file `_backup/rejected-<stamp>.json`: `{"base_hash", "sections": {id: html}}`. The server wrote nothing.
 
-1. Read the payload. Apply every section in it to the current page, not only the ids in the log line. The other sections were refused with them.
+1. Read the payload. Apply every section in it to the current page, not only the ids in the log line. The other sections were refused with them. Apply them under the edit rule (Rules).
 2. For an id in the log line, the student's text wins: put their words into the current section, and keep your layout change where it does not touch the words.
 3. Read the diff, then go on from loop step 6.
 4. Ask the student to press `R`. After a 409 the page offers `R`, and the payload file holds the student's edits, so the reload loses nothing.
@@ -108,7 +109,11 @@ Two-way means the export replaces each changed section whole. So do not edit the
    <python_cmd> scripts/pull_edits.py --deck <save folder>/<slug>.html --export <export file from the dry-run> --write
    ```
 
-   `--write` needs `--export`. Use the file that the dry-run read, so the export that the student reviewed is the export that is written. The script copies the page to `_backup/` next to it, then replaces only the changed sections. It does not change the head, the styles, or the scripts.
+   `--write` needs `--export`. Use the file that the dry-run read, so the export that the student reviewed is the export that is written.
+
+   `--write` reads the page as it is at the write. The script copies the page to `_backup/` next to it, then replaces each changed section with the export's version. It does not change the head, the styles, or the scripts.
+
+   When a server runs for this page, note the time when you run the dry-run; its output has no time. Before the write, read every line of `.serve.log` that is newer than the dry-run. If one of them is a save, run the dry-run again, and show the student the new diff before the write.
 
 5. **Adjust and record** as in loop steps 6 and 7.
 6. **Hand back.** Ask the student to reload the page before they edit again. An old tab would export its old sections over your changes.

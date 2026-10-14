@@ -1,5 +1,5 @@
 """Contract checks for reference/build.md and reference/revise.md
-(SPEC D9, D10, D11, D13; issues #8, #21).
+(SPEC D9, D10, D11, D13; issues #8, #21, #28).
 
 Run: python3 -m unittest discover -s tests
 """
@@ -255,6 +255,23 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
     def test_backup_folder_is_ignored(self):
         self.assertRegex(flat(self.text), r"(?i)`_backup/` is (in|listed in) the save folder['’]?s? `\.gitignore`")
 
+    def test_agent_edits_are_targeted_on_fresh_read(self):
+        # #28: a student save can land between the agent's read and write.
+        body = flat(section(self.text, "Rules"))
+        self.assertRegex(body, r"(?i)targeted edits? on a fresh read")
+        self.assertIn("Edit tool", body)
+        self.assertRegex(body, r"(?i)never rewrite the whole (file|page) from an older read")
+        self.assertRegex(body, r"(?i)re-read .*every line of `\.serve\.log`.* redo")
+        # The script writer the fallback uses is the named exception.
+        self.assertIn("`pull_edits.py --write` is the exception", body)
+
+    def test_agent_writers_follow_the_edit_rule(self):
+        # Every place the agent writes the page points at the rule.
+        loop = flat(section(self.text, "The loop"))
+        refused = flat(section(self.text, "When the save is refused"))
+        for name, body in [("loop", loop), ("409 merge", refused)]:
+            self.assertRegex(body, r"(?i)edit rule", f"{name} does not name the edit rule")
+
     def test_leaves_only_when_student_says_publish(self):
         body = flat(section(self.text, "Leaving revise"))
         self.assertRegex(body, r"`phase` to `publish`")
@@ -288,6 +305,13 @@ class FallbackReferenceTest(unittest.TestCase):
         commit, write = body.find("**Commit the page.**"), body.find("**Write.**")
         self.assertNotIn(-1, (commit, write), "no commit step or no write step")
         self.assertLess(commit, write, "commit step must come before the write step")
+
+    def test_write_checks_for_a_newer_server_save(self):
+        # #28: --write replaces sections whole; a server save after the
+        # dry-run would be lost, so the dry-run runs again.
+        body = flat(self.text)
+        self.assertRegex(body, r"(?i)before the write, read every line of `\.serve\.log` .*newer than the dry-run")
+        self.assertRegex(body, r"(?i)run the dry-run again")
 
     def test_reload_before_editing_again(self):
         self.assertRegex(flat(self.text), r"(?i)reload the page before (they|the student) edits? again")
