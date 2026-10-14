@@ -102,7 +102,7 @@ For each token, read the `colors:` keys in order. The first key that is present 
 
    For the fallback, when `#3b82f6` has a contrast below 3:1 against `paper`, add "이 배경에서는 기본값도 잘 안 보일 수 있어요." to the same message.
    The student can confirm it or pick another color. To pick another, list the other colors that pass the three tests in step 1, each with its key. Record the key of the color the student picks; a color that is not in the file gets `none`.
-   The key tells the student what the color means in the source (`warning`, `error`, `trading-down`); the student judges it. A list of excluded key names only moves the pick to another meaning color (`negative`, `info`), so the student's confirmation is the guard.
+   The key shows the student what the color means in the source. The student judges whether it fits.
 
 **Fonts.** Take the font family only, from the body and display entries of `typography:`.
 Append a Korean font to each stack (`'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`). A paid or proprietary family (for example `sohne-var`) falls back to a system font in the browser: say so to the student in one line.
