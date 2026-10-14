@@ -1,4 +1,4 @@
-"""Contract checks for reference/design.md (SPEC D14, D17, D25; issues #20, #27).
+"""Contract checks for reference/design.md (SPEC D14, D17, D25; issues #20, #27, #29).
 
 The mapping test reads the token chains from the table in design.md and
 applies them, so it checks the document, not a copy of it.

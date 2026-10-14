@@ -1,7 +1,7 @@
 ---
 scope: The design phase (SPEC D17, D25): style source, previews, accent, getdesign.md mapping, the Design section of BRIEF.md
 authority: SPEC.md D14, D17, D25, "Template tokens". tests/test_design_reference.py checks the rules here; its network test applies the mapping table below to every getdesign.md file
-status: new 2026-10-15; unverified draft (D19)
+status: new 2026-10-15; accent source key added for #29 2026-10-15; unverified draft (D19)
 ---
 
 # Design phase
@@ -86,7 +86,7 @@ For each token, read the `colors:` keys in order. The first key that is present 
 - `--paper`, `--ink`: keep the template value. These are the base of every `color-mix()`; tell the student which one fell back.
 - `--acc`: apply the accent rule.
 
-**Accent rule.** The accent sits on the page. Measure it against the mapped `--paper` value (`paper`). The accent fails when `primary` is missing, equals `ink`, or has a contrast below 3:1 against `paper` (WCAG contrast ratio). Then:
+**Accent rule.** The accent sits on the page. Measure it against the mapped `--paper` value (`paper`). The accent fails when `primary` is missing, equals `ink`, or has a contrast below 3:1 against `paper` (WCAG contrast ratio). A failed accent goes through steps 1 and 2. Every accent goes through step 3.
 
 1. Search the colors in this order: `link`, `link-*`, `brand-*`, `accent*`, then every other color in file order. Take the first color that passes all three tests: saturated (HSL saturation 0.4 or more, lightness 0.2 to 0.8), not equal to `ink`, and a contrast of 3:1 or more against `paper`.
 2. No color passes: use `#3b82f6`. This mid blue keeps 3:1 against a near-black and a near-white paper. On a mid-tone paper, `#3b82f6` can also fall below 3:1 (`nintendo-2001`); step 3 tells the student.
