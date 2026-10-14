@@ -110,12 +110,11 @@ shortcuts. `R` reloads when the page asks for it.
 
 | The skill does or asks | You decide |
 |---|---|
-| "이 저장소에 발표 자료를 커밋할까요?" (when the save folder is in a git repo) | Commit or not |
-| Lists `evidence/` files and any token-like strings | Redact, leave out, or keep each hit |
+| Lists `evidence/` files and any token-like strings (when the save folder is in a git repo) | Redact, leave out, or keep each hit |
 | "이 발표 페이지를 따로 배포할 생각이 있어요?" | No (stop at the local HTML), GitHub Pages, or another host (you get the paths) |
 | For Pages: your Pages repo path; the deployed folder (only when `gh` cannot read it); the page URL | Each of them, once; the next publish reuses them. A `gh-pages` branch source stops at the local HTML |
 | Copies the page into the Pages repo; drafts an index card when your index has cards | The card text |
-| Shows every commit, the URL, and the card in one message | Push or not (one question) |
+| Shows each repo and the files it will commit, the URL, and the card in one message: "커밋하고 푸시할까요?" | Commit and push, or not (one question); a yes commits and pushes with no second question |
 | Waits until the live page answers and matches | — |
 | Offers to save the style as DESIGN.md, or shows what changed against yours | New file, replace, no; or which changes to apply |
 | Asks whether the presentation is done | `phase: done` |

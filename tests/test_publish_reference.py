@@ -1,4 +1,4 @@
-"""Contract checks for reference/publish.md (SPEC D12, D13, D14, D17; issues #9, #22).
+"""Contract checks for reference/publish.md (SPEC D12, D13, D14, D17; issues #9, #22, #26).
 
 Run: python3 -m unittest discover -s tests
 """
@@ -14,13 +14,13 @@ SCRIPT = ROOT / "scripts" / "publish.py"
 
 # The publish steps, as `### N. <title>` headings, in D12 order.
 STEPS = [
-    "Commit in the save folder's repo",
+    "Check the save folder's repo",
     "Ask about a separate deploy",
     "Set up the Pages target",
     "Copy the page",
     "Draft the index card",
-    "Commit in the Pages repo",
     "Ask once",
+    "Commit",
     "Push",
     "Verify the live page",
     "DESIGN.md",
@@ -84,17 +84,17 @@ class PublishReferenceTest(unittest.TestCase):
         self.assertNotRegex(self.text, r"(?i)week repo")
         self.assertNotIn("<pages_repo>/study", self.text)
 
-    # Step 1: commit question, evidence check, commit set (D12, D13)
+    # Step 1: repo check, safety checks before the question (D12, D13)
 
-    def test_commit_question_asked_once_only_in_a_git_repo(self):
-        body = flat(step(self.text, "Commit in the save folder's repo"))
-        self.assertIn("이 저장소에 발표 자료를 커밋할까요?", body)
+    def test_repo_check_asks_nothing(self):
+        # #26: the commit is part of the one question in step 6.
+        body = flat(step(self.text, "Check the save folder's repo"))
         self.assertRegex(body, r"git -C <save> rev-parse --show-toplevel")
         self.assertRegex(body, r"(?i)not in a git repo[^.]*skip")
-        self.assertRegex(body, r"(?i)record the answer in `BRIEF\.md`")
+        self.assertNotIn("이 저장소에 발표 자료를 커밋할까요?", self.text)
 
     def test_evidence_listed_and_grepped_before_commit(self):
-        body = flat(step(self.text, "Commit in the save folder's repo"))
+        body = flat(step(self.text, "Check the save folder's repo"))
         self.assertRegex(body, r"(?i)list the files in `evidence/`")
         self.assertRegex(body, r"(?i)token-like strings")
         grep = re.search(r"grep -[A-Za-z]*E[A-Za-z]* '([^']+)' evidence/", body)
@@ -107,16 +107,17 @@ class PublishReferenceTest(unittest.TestCase):
         for clean in ["PASS tests/threads/alarm-single", "Kernel panic at 0xc0000000"]:
             self.assertNotRegex(clean, pattern, f"pattern hits {clean!r}")
         self.assertRegex(body, r"(?i)before (you )?stag")
+        self.assertRegex(body, r"(?i)a hit stops the commit until the student decides")
 
     def test_commit_set_includes_assets(self):
-        body = step(self.text, "Commit in the save folder's repo")
+        body = step(self.text, "Commit")
         add = re.search(r"(?m)^\s*(git -C <save> add .*)$", body)
-        self.assertTrue(add, "no git add line in step 1")
+        self.assertTrue(add, "no git add line in the Commit step")
         for item in ["<slug>.html", "<slug>.assets/", "BRIEF.md", "evidence/", ".gitignore"]:
             self.assertIn(item, add.group(1), f"commit set lacks '{item}'")
 
     def test_ignore_list_in_save_folder_never_repo_root(self):
-        body = flat(step(self.text, "Commit in the save folder's repo"))
+        body = flat(step(self.text, "Check the save folder's repo"))
         self.assertIn("`<save>/.gitignore`", body)
         for line in ["_backup/", "previews/", ".impeccable/", ".serve.json", ".serve.log"]:
             self.assertIn(f"`{line}`", body, f"gitignore '{line}'")
@@ -196,34 +197,67 @@ class PublishReferenceTest(unittest.TestCase):
         body = flat(step(self.text, "Draft the index card"))
         self.assertIn("<pages_url_base>study/weekNN/<slug>.html", body)
         self.assertRegex(body, r"(?i)full absolute URL as the `href`")
-        self.assertRegex(body, r"(?i)do not use a relative href")
         self.assertIn("BRIEF.md", body)
 
-    def test_card_rule_has_one_exception_relative_href_to_absolute(self):
-        rules = self.rules()
-        self.assertRegex(rules, r"(?i)do not remove or rewrite an existing card")
-        self.assertRegex(rules, r"(?i)exactly one exception")
-        self.assertRegex(rules, r"(?i)same page URL[^.]*href[^.]*from relative to absolute")
-        self.assertRegex(rules, r"(?i)nothing else of an existing card changes")
-        card = flat(step(self.text, "Draft the index card"))
-        self.assertRegex(card, r"(?i)change only that href to the absolute URL")
+    def test_any_href_that_resolves_to_the_page_url_matches(self):
+        # #25: verify resolves the card href, so a relative href is no longer
+        # a failure and an existing card is never rewritten.
+        body = flat(step(self.text, "Draft the index card"))
+        self.assertRegex(body, r"(?i)`href` that resolves to the page URL")
+        for form in ["absolute", "root-relative", "relative to the index"]:
+            self.assertIn(form, body)
+        self.assertRegex(body, r"(?i)keep that card as it is")
+        self.assertNotRegex(self.text, r"(?i)relative href fails")
+        self.assertNotRegex(self.text, r"(?i)from relative to absolute")
+        self.assertRegex(self.rules(), r"(?i)do not remove or rewrite an existing card\.")
 
     def test_pages_commit_names_assets(self):
-        body = step(self.text, "Commit in the Pages repo")
+        body = step(self.text, "Commit")
         add = re.search(r"(?m)^\s*(git -C <pages_repo> add .*)$", body)
         self.assertTrue(add, "no git add line in the Pages commit")
         self.assertIn("<slug>.html", add.group(1))
         self.assertIn("<slug>.assets/", add.group(1))
 
-    # Steps 7-9: push gate and live check
+    # Steps 6-9: one question, commit, push, live check (#26)
 
-    def test_push_only_after_explicit_yes_asked_once(self):
-        ask = step(self.text, "Ask once")
-        self.assertRegex(ask, r"(?i)push only after an explicit yes")
-        self.assertRegex(ask, r"(?i)if the answer is not a yes, stop")
+    def test_one_question_covers_commit_and_push_of_each_repo(self):
+        ask = flat(step(self.text, "Ask once"))
+        self.assertIn("커밋하고 푸시할까요?", ask)
+        self.assertRegex(ask, r"(?i)one question")
+        self.assertRegex(ask, r"(?i)save folder's repo")
+        self.assertRegex(ask, r"(?i)pages repo[^.]*when there is a deploy")
+        self.assertRegex(ask, r"(?i)record the answer in `BRIEF\.md`")
+        self.assertRegex(self.rules(), r"(?i)one question covers the commit and the push")
+
+    def test_a_no_skips_git_and_still_reaches_design_md(self):
+        ask = flat(step(self.text, "Ask once"))
+        self.assertRegex(ask, r"(?i)not a yes, skip steps 7 to 9 and go to step 10")
+        self.assertRegex(ask, r"(?i)the next publish asks again")
+        self.assertNotRegex(ask, r"(?i)commit only,")
+
+    def test_every_pass_asks_the_question_again(self):
+        head = flat(self.text[:self.text.index("## Rules")])
+        self.assertRegex(head, r"(?i)every pass through publish asks it again, a republish")
+        self.assertRegex(head, r"(?i)holds for that pass only")
+
+    def test_no_deploy_path_asks_the_same_question_for_the_save_repo(self):
+        deploy = flat(step(self.text, "Ask about a separate deploy"))
+        self.assertRegex(deploy, r"(?i)when the deploy stops[^.]*step 6[^.]*save folder's repo alone")
+        ask = flat(step(self.text, "Ask once"))
+        self.assertRegex(ask, r"(?i)no deploy[^.]*save folder's repo alone")
+        self.assertRegex(ask, r"(?i)no repo to commit[^.]*step 10")
+
+    def test_commit_then_push_with_no_second_question(self):
+        ask = flat(step(self.text, "Ask once"))
+        self.assertRegex(ask, r"(?i)commit only after an explicit yes")
+        self.assertRegex(ask, r"(?i)yes or no for all the listed repos together")
         self.assertRegex(self.rules(), r"(?i)push only after an explicit yes")
-        self.assertRegex(self.text, r"(?i)ask for the push once")
+        self.assertRegex(self.rules(), r"(?i)the only one about git in a pass")
+        commit = flat(step(self.text, "Commit"))
+        self.assertRegex(commit, r"(?i)save folder's repo.*pages repo")
+        self.assertRegex(commit, r"(?i)go on to step 8 without a question")
         self.assertRegex(flat(step(self.text, "Push")), r"(?i)save folder's repo.*pages repo")
+        self.assertNotRegex(self.text, r"(?i)push these repos now")
 
     def test_verify_checks_assets_and_card(self):
         body = flat(step(self.text, "Verify the live page"))

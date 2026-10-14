@@ -134,5 +134,5 @@ In file mode, "복원" merges in the page. A slide that changed in the file too 
 
 - Move `phase` to `publish` only when the student says to publish. Examples: "게시하자", "발표 자료 게시", "publish". A clean round, a passing render check, or an empty `Open issues` list is not enough.
 - Do not ask the student whether to publish after each round. Revise is open-ended. The student decides when the presentation is done.
-- In the same edit, set `updated` and rewrite `Next action`. Example: "Ask whether to commit the presentation in this repo (D12)."
+- In the same edit, set `updated` and rewrite `Next action`. Example: "Start publish: check the save folder's repo (D12)."
 - Then read `reference/publish.md`.

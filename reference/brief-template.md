@@ -210,11 +210,11 @@ One line per round. The student saves in the browser; the agent reads the change
 
 What `publish` did (D12–D14).
 
-- Commit in this repo (student's answer, then the commit): TBD
+- Commit in this repo (the commit, or "not a git repo"): TBD
 - Separate deploy (student's answer): TBD
 - Pages copy path: TBD
 - Pages repo commit: TBD
-- Push approved by student: TBD
+- Push approved by student (one answer for commit and push, this pass): TBD
 - Live URL (HTTP 200, `cmp` match): TBD
 - Index card found: TBD
 - DESIGN.md feedback: TBD

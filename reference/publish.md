@@ -1,7 +1,7 @@
 ---
-scope: The publish phase (SPEC D12, D13, D14, D17): commit question, deploy question, Pages copy, index card, push gate, live check, DESIGN.md feedback
+scope: The publish phase (SPEC D12, D13, D14, D17): safety checks, deploy question, Pages copy, index card, one commit-and-push question, live check, DESIGN.md feedback
 authority: SPEC.md D12–D14 and "Pages". CLI lines here must match `scripts/publish.py --help`; tests/test_publish_reference.py checks them
-status: revised 2026-10-15 (#22); unverified draft (D19)
+status: revised 2026-10-15 (#22, #26); unverified draft (D19)
 ---
 
 # Publish phase
@@ -14,6 +14,9 @@ verified and `BRIEF.md` has `phase: done`.
 Read `jungle-deck.local.md` first (keys: `reference/local-template.md`).
 Record each answer and result in the `Publish` section of `BRIEF.md` when
 you get it. On resume, a recorded answer is settled: do not ask it again.
+The step 6 question is the exception: every pass through publish asks it
+again, a republish from step 9 too. Its recorded answer holds for that
+pass only.
 
 Stop the revise server first (SPEC "Revise server"). If this session started
 it, stop that background task. Else read `{port, pid}` from
@@ -29,13 +32,13 @@ this page as `source`, end that pid (`kill <pid>`; on Windows
   `.gitignore` at the repo root.
 - Never edit the Pages copy. Edit only the source page in the save
   folder, then copy it again with `publish.py copy`. The copy is an output.
-- Push only after an explicit yes from the student (step 7). Silence, a
-  question, or "잠깐" is not a yes. Without a yes, push no repo.
-- Ask for the push once. Do not ask again for each repo.
+- One question covers the commit and the push of every repo in this
+  publish (step 6). Commit and push only after an explicit yes from the
+  student. Silence, a question, or "잠깐" is not a yes.
+- That question is the only one about git in a pass. A yes runs the
+  commits and the pushes in a row; a no skips them.
 - Do not change the URL of a page that is already published. Do not remove
-  or rewrite an existing card. There is exactly one exception: an existing
-  card for the same page URL may have its href changed from relative to
-  absolute (step 5). Nothing else of an existing card changes.
+  or rewrite an existing card.
 - `scripts/publish.py` never runs git. You run git; the script copies and
   checks.
 
@@ -46,19 +49,19 @@ from the skill directory.
 
 ## Steps
 
-### 1. Commit in the save folder's repo
+### 1. Check the save folder's repo
+
+This step asks nothing unless the token search hits. The commit itself
+waits for the question in step 6.
 
 1. Run `git -C <save> rev-parse --show-toplevel`. If the save folder is
    not in a git repo, skip the rest of this step and record "not a git
-   repo" in `BRIEF.md`.
-2. Ask once: "이 저장소에 발표 자료를 커밋할까요?". Name the repo path.
-   Record the answer in `BRIEF.md` (`Commit in this repo`). If the answer
-   is no, go to `### 2. Ask about a separate deploy`.
-3. Check that `<save>/.gitignore` has the lines `_backup/`, `previews/`,
+   repo" in `BRIEF.md` (`Commit in this repo`).
+2. Check that `<save>/.gitignore` has the lines `_backup/`, `previews/`,
    `.impeccable/`, `.serve.json`, and `.serve.log` (D13). The file is
    written when the save folder is created (`reference/brief-template.md`).
    If the file or a line is missing (an old save folder), add it there.
-4. Before you stage, list the files in `evidence/` and search them for
+3. Before you stage, list the files in `evidence/` and search them for
    token-like strings. Run this in `<save>`:
 
    ```
@@ -68,17 +71,8 @@ from the skill directory.
    Without `grep` (native Windows), use your own search tool with the same
    pattern. Show the student the file list and every hit. A hit stops the
    commit until the student decides: redact the line, leave the file out
-   of the commit, or keep it as it is.
-5. Stage the commit set by name. Leave out a path that does not exist
-   (`<slug>.assets/` exists only when the page has images).
-
-   ```
-   git -C <save> add <slug>.html <slug>.assets/ BRIEF.md evidence/ .gitignore
-   ```
-
-6. Run `git -C <save> status --short`. Make sure that nothing else is
-   staged.
-7. Commit. Record the commit hash in `BRIEF.md` (`Commit in this repo`).
+   of the commit, or keep it as it is. Record the decision; step 7 stages
+   by it.
 
 ### 2. Ask about a separate deploy
 
@@ -93,8 +87,7 @@ stops the deploy:
 - Yes, on another host: print the absolute path of the page and of its
   `<slug>.assets/` folder, then stop the deploy.
 
-When the deploy stops: if step 1 made a commit, do steps 7 and 8 for the
-save folder's repo alone, then go to step 10. Else go to step 10 directly.
+When the deploy stops, go to step 6 with the save folder's repo alone.
 
 ### 3. Set up the Pages target
 
@@ -159,25 +152,64 @@ card markup of the built-in shape: a tag with `class="card"` and a
 `data-week` attribute. Else skip this step silently.
 
 1. Make the page URL: `<pages_url_base>study/weekNN/<slug>.html`. Use the
-   full absolute URL as the `href`. Do not use a relative href:
-   `publish.py verify` searches the live index for the full absolute URL,
-   so a relative href fails the check.
+   full absolute URL as the `href`: it reaches the page from any location
+   of `index.html`. `publish.py verify` accepts any `href` that resolves to
+   the page URL: absolute, root-relative, or relative to the index.
 2. Fill the card format from `card_format` (`builtin`: see
    `reference/local-template.md`). Take the title, the description, and
    the meta line from `BRIEF.md`.
-3. Search `<pages_dir>/index.html` for the page URL. If a card already
-   links it, keep that card and do not add a second one. If the old card
-   has a relative href, change only that href to the absolute URL.
+3. Search `<pages_dir>/index.html` for a card whose `href` resolves to
+   the page URL, in any of those forms. If a card already links it, keep
+   that card as it is and do not add a second one.
 4. Show the drafted card to the student. Insert it into `index.html` in the
    group of that week. If no group matches, ask the student where to put
    it.
 
-### 6. Commit in the Pages repo
+### 6. Ask once
 
-Stage the copy, its assets, and `index.html` by name. `<dir>` is the path
-of `pages_dir` relative to `pages_repo`: `.` or `docs`. `[weekNN/]` is there
-only with a week. Leave out `<slug>.assets/` when the page has no images,
-and `index.html` when step 5 did not change it.
+The repos in this publish: the save folder's repo (when step 1 found
+one), and the Pages repo when there is a deploy. With no deploy, the
+question covers the save folder's repo alone. With no repo to commit
+(no git repo and no deploy), skip this question and go to step 10.
+
+Show the student, in one message:
+
+- each repo path, and the files that step 7 will stage in it,
+- the page URL, when there is a deploy,
+- the card text, when step 5 drafted one.
+
+Ask one question: "이 저장소들에 커밋하고 푸시할까요?" (with one repo:
+"이 저장소에 커밋하고 푸시할까요?"). Commit only after an explicit yes
+("응", "yes", "push", "올려"). Record the answer in `BRIEF.md`
+(`Push approved by student`). The answer is yes or no for all the listed
+repos together. A yes goes on to step 7.
+
+If the answer is not a yes, skip steps 7 to 9 and go to step 10. When there is a
+deploy, tell the student that the Pages copy stays uncommitted in the
+Pages repo. Set
+`Next action` to "No commit or push in this pass; the next publish asks
+again".
+
+### 7. Commit
+
+Commit in the save folder's repo first, then in the Pages repo.
+
+Save folder's repo: stage the commit set by name. Leave out a path that
+does not exist (`<slug>.assets/` exists only when the page has images),
+and a file the student left out in step 1.
+
+```
+git -C <save> add <slug>.html <slug>.assets/ BRIEF.md evidence/ .gitignore
+```
+
+Run `git -C <save> status --short`. Make sure that nothing else is
+staged. Commit. Record the commit hash in `BRIEF.md`
+(`Commit in this repo`).
+
+Pages repo: stage the copy, its assets, and `index.html` by name. `<dir>`
+is the path of `pages_dir` relative to `pages_repo`: `.` or `docs`.
+`[weekNN/]` is there only with a week. Leave out `<slug>.assets/` when the
+page has no images, and `index.html` when step 5 did not change it.
 
 ```
 git -C <pages_repo> add <dir>/study/[weekNN/]<slug>.html <dir>/study/[weekNN/]<slug>.assets/ <dir>/index.html
@@ -186,23 +218,13 @@ git -C <pages_repo> add <dir>/study/[weekNN/]<slug>.html <dir>/study/[weekNN/]<s
 Commit in `pages_repo`. Record the commit hash in `BRIEF.md`
 (`Pages repo commit`).
 
-### 7. Ask once
-
-Show the student, in one message:
-
-- each commit of this publish (`git log -1 --stat` in each repo),
-- the page URL, when there is a deploy,
-- the card text, when step 5 drafted one.
-
-Ask one question: push these repos now? Push only after an explicit yes
-("응", "yes", "push", "올려"). Record the answer in `BRIEF.md`
-(`Push approved by student`). If the answer is not a yes, stop. Keep the
-commits. Set `Next action` to "Ask the student to approve the push".
+Then go on to step 8 without a question.
 
 ### 8. Push
 
-Push the save folder's repo first (when step 1 made a commit), then the
-Pages repo. If a push fails, show the error and stop. Do not force-push.
+Push the save folder's repo first, then the Pages repo. Push only the
+repos that step 7 committed in. If a push fails, show the error and stop.
+Do not force-push. Without a deploy, go to step 10 after the push.
 
 ### 9. Verify the live page
 
@@ -269,9 +291,9 @@ when it was deployed):
 
 1. Set `phase: done` and `updated` in `BRIEF.md`.
 2. Set `Next action` to "None. The presentation is published."
-3. If step 1 made a commit, commit `BRIEF.md` alone in the save folder's
-   repo. This commit stays local: do not push it, and ask no second push
-   confirmation in this publish. It goes out with the next push of the
+3. If step 7 made a commit in the save folder's repo, commit `BRIEF.md`
+   alone there. This commit stays local: do not push it, and ask no
+   second push confirmation in this publish. It goes out with the next push of the
    save folder's repo.
 4. Tell the student that this `phase: done` commit stays local until
    their next push of the save folder's repo.
