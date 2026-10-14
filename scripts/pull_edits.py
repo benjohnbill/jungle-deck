@@ -51,12 +51,29 @@ def sections(html):
             yield sid.group(1), m
 
 
-def clean(inner):
+NBSP = re.compile("&nbsp;|\u00a0")
+
+
+def nbsp_neighbors(html):
+    """(left, right) character around each non-breaking space, in order.
+    Both nbsp forms read as one character, and '&gt;' as '>', so the
+    browser's serialization and the source give the same pairs."""
+    units = [None if NBSP.fullmatch(u) else u.replace("&gt;", ">")
+             for u in re.findall(r"&nbsp;|\u00a0|&gt;|.", html, re.S)]
+    return [(units[i - 1] if i else "", units[i + 1] if i + 1 < len(units) else "")
+            for i, u in enumerate(units) if u is None]
+
+
+def clean(inner, base=""):
     """Undo what the live page and the editor leave in a section: edit
     attributes, typed non-breaking spaces, and the slide number the
-    runtime writes into .head .num."""
+    runtime writes into .head .num. A non-breaking space whose neighbors
+    match one in base (the source section) was written on purpose: it
+    stays, in base's form; every other one becomes a plain space."""
     inner = re.sub(r'\s+contenteditable="[^"]*"', "", inner)
-    inner = inner.replace("&nbsp;", " ").replace("\u00a0", " ")
+    kept = dict(zip(nbsp_neighbors(base), (m.group() for m in NBSP.finditer(base))))
+    pairs = iter(nbsp_neighbors(inner))
+    inner = NBSP.sub(lambda m: kept.get(next(pairs), " "), inner)
     inner = re.sub(r'(<span class="num">)[^<]*(</span>)', r"\1\2", inner)
     return inner
 
@@ -144,7 +161,7 @@ def write_atomic(path, text):
 def merge(deck, export, write):
     src = read_keeping_newlines(deck)
     src_sections = list(sections(src))
-    new = {sid: clean(m.group(2)) for sid, m in sections(read_keeping_newlines(export))}
+    new = {sid: m.group(2) for sid, m in sections(read_keeping_newlines(export))}
     src_ids = [sid for sid, _ in src_sections]
     if not set(src_ids) & set(new):
         raise Fail(f"{export}: no matching sections (deck ids: {', '.join(src_ids) or 'none'})")
@@ -156,16 +173,18 @@ def merge(deck, export, write):
     for sid, m in src_sections:
         if sid not in new:
             continue
-        if same(clean(m.group(2)), new[sid]):
+        base = m.group(2)
+        cleaned = clean(new[sid], base)
+        if same(clean(base, base), cleaned):
             unchanged.append(sid)
             continue
         changed.append(sid)
-        inner = lf(new[sid])
+        inner = lf(cleaned)
         if "\r\n" in src:
             inner = inner.replace("\n", "\r\n")
         edits.append((m.start(2), m.end(2), inner))
         diff = difflib.unified_diff(
-            m.group(2).splitlines(), new[sid].splitlines(),
+            base.splitlines(), cleaned.splitlines(),
             f"{deck.name}#{sid}", f"{export.name}#{sid}", lineterm="")
         print("\n".join(diff))
 

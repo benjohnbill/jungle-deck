@@ -120,10 +120,10 @@ class Server(ThreadingHTTPServer):
             edits = []
             for i, inner in sent.items():
                 m = src[i]
-                new = pull_edits.lf(pull_edits.clean(inner))
+                new = pull_edits.lf(pull_edits.clean(inner, m.group(2)))
                 if "\r\n" in text:
                     new = new.replace("\n", "\r\n")
-                if not pull_edits.same(pull_edits.clean(m.group(2)), new):
+                if not pull_edits.same(pull_edits.clean(m.group(2), m.group(2)), new):
                     edits.append((m.start(2), m.end(2), new, i))
             # Whether the file held the client's base just before this save.
             # False: it also holds edits the page does not show, so the page

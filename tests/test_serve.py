@@ -264,6 +264,15 @@ class ThreeWaySaveTest(Saving):
         self.assertEqual(status, 409)
         self.assertIn("원인은 캐스팅 한 줄", self.deck.read_text(encoding="utf-8"))
 
+    def test_source_nbsp_survives_a_save_of_its_section(self):
+        text = STAGE.replace("<em>한 가지</em>", "<em>64&nbsp;KB</em>")
+        self.deck.write_text(text, encoding="utf-8")
+        status, _ = self.save({"s2": section_inner(text, "s2").replace(
+            "이 장에서", "이&nbsp;장에서 새로")})
+        self.assertEqual(status, 200)
+        self.assertIn("<h2>이 장에서 새로 보여 줄 <em>64&nbsp;KB</em></h2>",
+                      self.deck.read_text(encoding="utf-8"))
+
     def test_untouched_bytes_are_never_written(self):
         crlf = STAGE.replace("\n", "\r\n")
         self.deck.write_bytes(crlf.encode("utf-8"))

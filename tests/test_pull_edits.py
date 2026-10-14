@@ -225,6 +225,29 @@ class WriteNeedsExport(Workspace):
         self.assertIn("<h1>새 제목</h1>", self.deck.read_text(encoding="utf-8"))
 
 
+class CleanNbsp(unittest.TestCase):
+    """clean() keeps a non-breaking space the base section already had and
+    turns one the editor introduced into a plain space (issue #33)."""
+
+    def test_base_nbsp_survives_and_typed_one_becomes_a_space(self):
+        base = "<p>64&nbsp;KB 블록</p>"
+        self.assertEqual(pull_edits.clean("<p>64&nbsp;KB 큰&nbsp;블록</p>", base),
+                         "<p>64&nbsp;KB 큰 블록</p>")
+
+    def test_kept_nbsp_takes_the_base_form(self):
+        # The browser writes U+00A0 as &nbsp;; the source's form comes back.
+        self.assertEqual(pull_edits.clean("<p>8&nbsp;바이트</p>", "<p>8\u00a0바이트</p>"),
+                         "<p>8\u00a0바이트</p>")
+
+    def test_without_a_base_every_nbsp_becomes_a_space(self):
+        self.assertEqual(pull_edits.clean("<p>a&nbsp;b\u00a0c</p>"), "<p>a b c</p>")
+
+    def test_student_text_is_never_dropped(self):
+        posted = "<p>새&nbsp;문장 64&nbsp;KB</p>"
+        out = pull_edits.clean(posted, "<p>64&nbsp;KB</p>")
+        self.assertEqual(out.replace("&nbsp;", " "), posted.replace("&nbsp;", " "))
+
+
 class Write(Workspace):
     def test_round_trip_changes_only_the_edited_section(self):
         # The export as Ctrl+S writes it: slide numbers filled, a typed
@@ -241,6 +264,25 @@ class Write(Workspace):
         self.assertIn("1 changed, 3 unchanged", out)
         expected = STAGE.replace(S2_H2, "<h2>블록 크기는 <em>헤더 포함</em></h2>")
         self.assertEqual(self.deck.read_bytes(), expected.encode("utf-8"))
+
+    def test_source_nbsp_survives_an_edit_of_its_section(self):
+        src = STAGE.replace(S2_H2, "<h2>블록은 64&nbsp;KB</h2>")
+        self.deck.write_text(src, encoding="utf-8")
+        exp = self.export(export_of(src.replace(
+            "<h2>블록은 64&nbsp;KB</h2>", "<h2>힙&nbsp;블록은 64&nbsp;KB</h2>")))
+        code, out, _ = run("--deck", self.deck, "--export", exp, "--write")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.deck.read_text(encoding="utf-8"),
+                         src.replace("<h2>블록은 64&nbsp;KB</h2>", "<h2>힙 블록은 64&nbsp;KB</h2>"))
+
+    def test_raw_nbsp_in_source_is_not_a_change(self):
+        src = STAGE.replace(S2_H2, "<h2>블록은 64\u00a0KB</h2>")
+        self.deck.write_text(src, encoding="utf-8")
+        exp = self.export(export_of(src.replace("\u00a0", "&nbsp;")))
+        code, out, _ = run("--deck", self.deck, "--export", exp, "--write")
+        self.assertEqual(code, 0)
+        self.assertIn("0 changed, 4 unchanged", out)
+        self.assertEqual(self.deck.read_text(encoding="utf-8"), src)
 
     def test_write_backs_up_the_deck_before_it_changes(self):
         crlf = STAGE.replace("\n", "\r\n").encode("utf-8")
