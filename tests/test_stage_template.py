@@ -193,5 +193,90 @@ class TokensTest(unittest.TestCase):
         self.assertRegex(css, r":root\s*\{[^}]*--acc:")
 
 
+def root_tokens():
+    """Token -> value of the first :root block, comments removed."""
+    css = re.sub(r"/\*.*?\*/", "", "".join(parse().style), flags=re.S)
+    body = re.search(r":root\s*\{([^{}]*)\}", css).group(1)
+    return {m.group(1): m.group(2).strip()
+            for m in re.finditer(r"(--[\w-]+)\s*:\s*([^;]+);", body)}
+
+
+class DerivedTokensTest(unittest.TestCase):
+    """SPEC "Template tokens": a style source sets only the base tokens."""
+
+    DERIVED = ["--hl", "--edit-bg", "--cap-b", "--shadow", "--dim", "--scrim"]
+    BASE = re.compile(r"var\(--(acc|ink|paper)\)")
+
+    def setUp(self):
+        self.tok = root_tokens()
+
+    def test_derived_tokens_use_color_mix_of_base_tokens(self):
+        for t in self.DERIVED:
+            v = self.tok[t]
+            self.assertTrue(v.startswith("color-mix("), f"{t}: {v}")
+            self.assertRegex(v, self.BASE, t)
+            self.assertNotRegex(v, TokensTest.COLOR, t)
+
+    def test_no_rgba_literals(self):
+        css = "".join(parse().style)
+        self.assertNotRegex(css, r"rgba\(")
+
+    def test_only_base_tokens_hold_literal_colors(self):
+        literal = {t for t, v in self.tok.items() if TokensTest.COLOR.search(v)}
+        self.assertLessEqual(literal,
+                             {"--paper", "--ink", "--acc", "--mut", "--panel", "--grid"})
+
+
+class TemplateTextTest(unittest.TestCase):
+    """D9 template text."""
+
+    def setUp(self):
+        self.text = TEMPLATE.read_text(encoding="utf-8")
+
+    def test_no_question_line(self):
+        self.assertNotIn("질문 받을게요", self.text)
+
+    def test_notes_panel_time_labels(self):
+        self.assertIn("참고 시간", self.text)
+        self.assertIn("참고 합계", self.text)
+        self.assertNotIn("목표 <b", self.text)
+        self.assertNotIn("'전체 '", self.text)
+
+
+class HelpOverlayTest(unittest.TestCase):
+    """D9 usage guidance in the page: `?` overlay and a one-time hint."""
+
+    SAVE_LINE = "고친 뒤 저장하고 에이전트에게 말해 주세요"
+
+    def setUp(self):
+        self.doc = parse()
+        self.text = TEMPLATE.read_text(encoding="utf-8")
+        self.js = "".join(self.doc.script)
+        self.byid = {a.get("id"): a for _, a in self.doc.elements if a.get("id")}
+
+    def test_overlay_and_hint_exist_hidden(self):
+        for i in ["helpOverlay", "firstHint"]:
+            self.assertIn(i, self.byid)
+            self.assertIn("hidden", self.byid[i])
+
+    def test_question_key_uses_physical_code(self):
+        self.assertIn("e.code === 'Slash'", self.js)
+
+    def test_both_carry_the_save_line(self):
+        for i in ["helpOverlay", "firstHint"]:
+            m = re.search(r'id="' + i + r'".*?</div>', self.text, re.S)
+            self.assertTrue(m, i)
+            self.assertIn(self.SAVE_LINE, m.group(0), i)
+
+    def test_hint_shows_once_per_deck(self):
+        self.assertRegex(self.js, r"STORE \+ ':hinted'")
+
+    def test_export_resets_overlay_and_hint(self):
+        export = self.js[self.js.index("function exportFile"):]
+        export = export[:export.index("\n}\n")]
+        for i in ["#helpOverlay", "#firstHint"]:
+            self.assertIn(i, export)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,7 @@
     → / Space / PageDown : next step on this slide; after the last step, next slide
     ← / PageUp           : hide the last step; with none shown, previous slide
     N                    : toggle the speaker-notes panel
+    ?                    : shortcut overlay (Esc or ? closes it)
     E (or top-left corner): edit mode; click slide text or notes to change it
     Ctrl+S               : download the edited deck as an HTML file (Esc leaves the caret)
     Home / End           : first / last slide
@@ -43,22 +44,27 @@
 <style>
 /* ===========================================
    1. Theme tokens. Every color lives here.
-   PLACEHOLDER values: the real style comes from the student's DESIGN.md,
-   or from frontend-slides style discovery (Phase 2) for a first deck.
+   PLACEHOLDER values: the real style comes from the Design section of
+   BRIEF.md. A style source sets only the base tokens (--paper, --ink,
+   --acc, --mut, --panel, --grid) and the fonts; the rest derive from them.
    =========================================== */
 :root {
+    /* Base tokens */
     --paper:   #ffffff;
     --ink:     #111111;
     --acc:     #3d5a80;               /* placeholder accent, neutral slate; the only accent, used for text */
-    --hl:      rgba(61,90,128,.13);   /* code-line highlight fill; the only filled accent */
-    --edit-bg: rgba(61,90,128,.05);   /* focused field in edit mode */
     --grid:    #ebebeb;
     --mut:     #5e5e5e;
-    --dim:     #8a8a8a;               /* code comments, elided lines */
     --panel:   #f5f5f4;
-    --panel-b: #111111;
-    --cap-b:   rgba(17,17,17,.25);    /* panel caption rule */
-    --shadow:  rgba(0,0,0,.08);
+
+    /* Derived tokens: do not set these in a style source */
+    --hl:      color-mix(in srgb, var(--acc) 13%, transparent);  /* code-line highlight fill; the only filled accent */
+    --edit-bg: color-mix(in srgb, var(--acc) 5%, transparent);   /* focused field in edit mode */
+    --dim:     color-mix(in srgb, var(--ink) 50%, var(--paper)); /* code comments, elided lines */
+    --panel-b: var(--ink);
+    --cap-b:   color-mix(in srgb, var(--ink) 25%, transparent);  /* panel caption rule */
+    --shadow:  color-mix(in srgb, var(--ink) 8%, transparent);
+    --scrim:   color-mix(in srgb, var(--ink) 45%, transparent);  /* behind the help overlay */
 
     /* System fonts by default. Author's default (uncomment with the <link> above):
     --font-body: 'IBM Plex Sans KR', sans-serif;
@@ -387,6 +393,36 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
     color: var(--mut); text-decoration: none; opacity: .75;
 }
 .home-link:hover { opacity: 1; text-decoration: underline; }
+
+/* ===========================================
+   9. Usage guidance: ? overlay and a one-time hint on first open
+   =========================================== */
+#helpOverlay {
+    position: fixed; inset: 0; z-index: 10002;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--scrim);
+}
+#helpOverlay[hidden], #firstHint[hidden] { display: none; }
+#helpOverlay .help-box {
+    background: var(--paper); color: var(--ink);
+    border: 2px solid var(--ink); box-shadow: 0 12px 32px var(--shadow);
+    padding: clamp(1rem, 2.4vh, 1.8rem) clamp(1.2rem, 2.4vw, 2.2rem);
+    max-width: min(90vw, 560px); max-height: 90vh; overflow: auto;
+}
+#helpOverlay h2 { font-size: var(--h3-size); margin-bottom: .6em; }
+#helpOverlay dl {
+    display: grid; grid-template-columns: max-content 1fr; gap: .35em 1.2em;
+    font-size: var(--small-size); line-height: 1.5;
+}
+#helpOverlay dt { font-family: var(--font-mono); font-weight: 600; color: var(--acc); }
+.help-save { margin-top: .9em; font-size: var(--small-size); font-weight: 600; word-break: keep-all; }
+#firstHint {
+    position: fixed; left: 50%; bottom: clamp(3.6rem, 11vh, 6.5rem); transform: translateX(-50%);
+    z-index: 10000; max-width: min(92vw, 640px);
+    background: var(--ink); color: var(--paper);
+    font-size: var(--small-size); line-height: 1.5; word-break: keep-all;
+    padding: .6em 1em; cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -394,7 +430,7 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
 
 <div class="progress-bar" id="progressBar"></div>
 <nav class="nav-dots" id="navDots" aria-label="슬라이드 이동"></nav>
-<div class="keyboard-hint">→ 다음 단계 · ← 이전 · N 발표자 노트 · E 편집 · Ctrl+S 저장</div>
+<div class="keyboard-hint">→ 다음 단계 · ← 이전 · N 발표자 노트 · E 편집 · Ctrl+S 저장 · ? 도움말</div>
 
 <div class="edit-hotzone" aria-hidden="true"></div>
 <button class="edit-toggle" id="editToggle" title="편집 모드 (E)" aria-label="편집 모드 켜기">✏️</button>
@@ -470,18 +506,35 @@ body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); backgr
         <h1>마지막으로 남길 문장</h1>
         <h1>그 문장의 다음 행동</h1>
         <div class="rule"></div>
-        <p class="thanks">질문 받을게요 · 감사합니다</p>
+        <p class="thanks">감사합니다</p>
     </div>
     <div class="foot"><span>YYYY-MM · WEEK NN</span><span>주제</span></div>
     <aside class="notes" data-sec="20">
-        <p>마지막 문장을 한 번 더 말하고 질문을 받는다.</p>
+        <p>마지막 문장을 한 번 더 말하고 맺는다.</p>
     </aside>
 </section>
 
 <div id="notesPanel" hidden aria-live="polite">
-    <div class="meta"><span id="nSlide"></span><span>목표 <b id="nSec"></b>초</span><span id="nStep"></span><span id="nTotal"></span></div>
+    <div class="meta"><span id="nSlide"></span><span>참고 시간 <b id="nSec"></b>초</span><span id="nStep"></span><span id="nTotal"></span></div>
     <div class="body" id="nBody"></div>
 </div>
+
+<div id="helpOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-box">
+        <h2 id="helpTitle">단축키</h2>
+        <dl>
+            <dt>→ · Space</dt><dd>다음 단계, 마지막 단계 뒤에는 다음 슬라이드</dd>
+            <dt>←</dt><dd>이전 단계, 단계가 없으면 이전 슬라이드</dd>
+            <dt>Home · End</dt><dd>처음 · 마지막 슬라이드</dd>
+            <dt>N</dt><dd>발표자 노트 열고 닫기</dd>
+            <dt>E</dt><dd>편집 모드: 글자나 노트를 눌러 고치기</dd>
+            <dt>Ctrl+S</dt><dd>고친 발표 자료를 HTML 파일로 저장</dd>
+            <dt>?</dt><dd>이 도움말 열고 닫기 (Esc로도 닫힘)</dd>
+        </dl>
+        <p class="help-save">고친 뒤 저장하고 에이전트에게 말해 주세요.</p>
+    </div>
+</div>
+<div id="firstHint" hidden role="status">? 키로 단축키를 볼 수 있어요 · 고친 뒤 저장하고 에이전트에게 말해 주세요.</div>
 
 <script>
 /* ===========================================
@@ -585,7 +638,7 @@ function renderNotes() {
     document.getElementById('nSlide').textContent = pad(cur + 1) + ' / ' + pad(total);
     document.getElementById('nSec').textContent = a ? a.dataset.sec : '–';
     document.getElementById('nStep').textContent = maxStep(s) ? '단계 ' + shown(s) + ' / ' + maxStep(s) : '단계 없음';
-    document.getElementById('nTotal').textContent = '전체 ' + totalSec + '초';
+    document.getElementById('nTotal').textContent = '참고 합계 ' + totalSec + '초';
     document.getElementById('nBody').innerHTML = a ? a.innerHTML : '';
 }
 
@@ -606,7 +659,12 @@ document.addEventListener('keydown', (e) => {
         return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    /* e.code, not e.key, so E and N work with a Korean IME on */
+    /* e.code, not e.key, so E, N, and ? work with a Korean IME on */
+    if (e.code === 'Slash') { e.preventDefault(); toggleHelp(); return; }
+    if (!helpOverlay.hidden) {
+        if (e.key === 'Escape') toggleHelp();
+        return;   /* the overlay holds the keys until it closes */
+    }
     if (e.code === 'KeyE') { toggleEdit(); return; }
     if (e.code === 'KeyN') { notesPanel.hidden = !notesPanel.hidden; return; }
     switch (e.key) {
@@ -671,6 +729,8 @@ function exportFile() {
     doc.querySelectorAll('#notesPanel span[id], #notesPanel b[id], #nBody').forEach(e => e.textContent = '');
     doc.querySelector('#editToggle').className = 'edit-toggle';
     doc.querySelector('#editToggle').setAttribute('aria-label', '편집 모드 켜기');
+    doc.querySelector('#helpOverlay').setAttribute('hidden', '');
+    doc.querySelector('#firstHint').setAttribute('hidden', '');
     scrub(doc);
     const blob = new Blob(['<!DOCTYPE html>\n' + doc.outerHTML], { type: 'text/html' });
     const a = document.createElement('a');
@@ -690,6 +750,26 @@ hotzone.addEventListener('mouseleave', () => {
 });
 editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimer));
 editToggle.addEventListener('click', toggleEdit);
+
+/* ? overlay */
+const helpOverlay = document.getElementById('helpOverlay');
+function toggleHelp() {
+    helpOverlay.hidden = !helpOverlay.hidden;
+    if (!helpOverlay.hidden) firstHint.hidden = true;
+}
+helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) toggleHelp(); });
+
+/* One-time hint: the first time this deck opens in this browser */
+const firstHint = document.getElementById('firstHint');
+(function hintOnce() {
+    try {
+        if (localStorage.getItem(STORE + ':hinted')) return;
+        localStorage.setItem(STORE + ':hinted', '1');
+    } catch (e) {}   /* no storage: show it on every open rather than never */
+    firstHint.hidden = false;
+    firstHint.addEventListener('click', () => { firstHint.hidden = true; });
+    setTimeout(() => { firstHint.hidden = true; }, 10000);
+})();
 
 /* #3 opens slide 3 */
 const fromHash = () => {
