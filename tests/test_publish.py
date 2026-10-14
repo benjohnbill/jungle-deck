@@ -483,11 +483,23 @@ class Verify(Workspace):
                        '<a class="card" href="study/week03/sample&#45;deck.html">',
                        '<a class="card" href="study/week03/sample-deck.html#2">',
                        '<a class="card" href="study/week03/sample-deck.html?v=1">',
-                       '<a href="">top</a><a class="card" href="study/week03/sample-deck.html">'):
+                       '<a href="">top</a><a class="card" href="study/week03/sample-deck.html">',
+                       '<A CLASS="card" HREF="study/week03/sample-deck.html">',
+                       '<a class=card href=study/week03/sample-deck.html>'):
             with self.subTest(anchor=anchor):
                 self.go_live(index=anchor + "x</a>")
                 code, _, err = self.verify()
                 self.assertEqual(code, 0, err)
+
+    def test_project_pages_base_resolves_root_relative_hrefs_under_the_repo(self):
+        base = "https://o.github.io/repo/"
+        page = base + "study/week03/sample-deck.html"
+        for href, found in (("/repo/study/week03/sample-deck.html", True),
+                            ("study/week03/sample-deck.html", True),
+                            ("/study/week03/sample-deck.html", False)):
+            with self.subTest(href=href):
+                index = f'<a class="card" href="{href}">x</a>'.encode()
+                self.assertEqual(publish.links_to(index, base, page), found)
 
     def test_card_href_must_resolve_to_the_page_itself(self):
         for href in ("study/week03/sample-deck.html.bak", "/other/study/week03/sample-deck.html",

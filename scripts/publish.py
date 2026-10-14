@@ -27,8 +27,8 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 HOME_LINK = re.compile(rb'<a\b[^>]*\bclass="[^"]*\bhome-link\b[^"]*"[^>]*>.*?</a>', re.S)
 HREF = re.compile(rb'href="[^"]*"')  # the home link's href, as the template writes it
-# Any href in a hand-edited index.html: either quote style, spaces around "="
-ANY_HREF = re.compile(rb"""\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+# Any href in a hand-edited index.html: any case, double, single, or no quotes
+ANY_HREF = re.compile(rb"""\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))""", re.I)
 # Card markup of the built-in shape: any tag with class "card" and data-week (D12)
 CARD = re.compile(rb'<\w+\b(?=[^>]*\bclass="(?:[^"]*\s)?card[\s"])(?=[^>]*\bdata-week=)[^>]*>')
 
@@ -174,7 +174,7 @@ def links_to(index, index_url, page_url):
         parts = urllib.parse.urlsplit(url)
         return parts.scheme, parts.netloc, urllib.parse.unquote(parts.path)
     for m in ANY_HREF.finditer(index):
-        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        raw = next(g for g in m.groups() if g is not None)
         href = unescape(raw.decode("utf-8", "replace")).strip()
         if page_of(urllib.parse.urljoin(index_url, href)) == page_of(page_url):
             return True
