@@ -113,9 +113,13 @@ class Server(ThreadingHTTPServer):
                     new = new.replace("\n", "\r\n")
                 if not pull_edits.same(pull_edits.clean(m.group(2)), new):
                     edits.append((m.start(2), m.end(2), new, i))
+            # Whether the file held the client's base just before this save.
+            # False: it also holds edits the page does not show, so the page
+            # keeps its old base instead of adopting the new hash.
+            current = h == base_hash
             if not edits:
                 self.log("save (no change)")
-                return 200, {"hash": h, "written": []}
+                return 200, {"hash": h, "written": [], "base_current": current}
             out = text
             for start, end, new, _ in sorted(edits, reverse=True):
                 out = out[:start] + new + out[end:]
@@ -124,7 +128,7 @@ class Server(ThreadingHTTPServer):
             _, h = self.current()
             ids = [i for *_, i in edits]
             self.log(f"save {','.join(ids)} backup={copy}")
-            return 200, {"hash": h, "written": ids}
+            return 200, {"hash": h, "written": ids, "base_current": current}
 
     def reject(self, payload):
         """Keep a rejected payload in _backup/rejected-<stamp>.json; return its path."""

@@ -235,6 +235,35 @@ class ThreeWaySaveTest(Saving):
         self.assertIn("두 가지", text)
         self.assertIn("원인은 캐스팅 한 줄", text)
 
+    def test_base_current_is_true_when_the_file_held_the_base(self):
+        status, body = self.save({"s2": self.edited("s2", "한 가지", "두 가지")})
+        self.assertEqual(status, 200)
+        self.assertIs(json.loads(body)["base_current"], True)
+
+    def test_base_current_is_false_after_a_write_between_snapshot_and_save(self):
+        stale = self.base()
+        self.agent_edit("s3", "원인을 한 문장으로", "원인은 캐스팅 한 줄")
+        status, body = self.save({"s2": self.edited("s2", "한 가지", "두 가지")}, base_hash=stale)
+        self.assertEqual(status, 200)
+        self.assertIs(json.loads(body)["base_current"], False)
+
+    def test_agent_edit_survives_when_the_page_keeps_its_base(self):
+        # Agent edits s3; the student saves s2, then edits and saves s3. The
+        # page keeps its old base when base_current is false, so the second
+        # save is a 409 and the agent's s3 survives.
+        page_base = self.base()
+        old_s3 = section_inner(self.deck.read_text(encoding="utf-8"), "s3")
+        self.agent_edit("s3", "원인을 한 문장으로", "원인은 캐스팅 한 줄")
+        status, body = self.save({"s2": self.edited("s2", "한 가지", "두 가지")},
+                                 base_hash=page_base)
+        reply = json.loads(body)
+        if reply["base_current"]:
+            page_base = reply["hash"]
+        status, _ = self.save({"s3": old_s3.replace("원인을 한 문장으로", "학생 원인")},
+                              base_hash=page_base)
+        self.assertEqual(status, 409)
+        self.assertIn("원인은 캐스팅 한 줄", self.deck.read_text(encoding="utf-8"))
+
     def test_untouched_bytes_are_never_written(self):
         crlf = STAGE.replace("\n", "\r\n")
         self.deck.write_bytes(crlf.encode("utf-8"))

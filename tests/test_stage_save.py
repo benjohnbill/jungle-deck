@@ -132,6 +132,18 @@ class RestoreByIdTest(unittest.TestCase):
         self.assertIn('<section class="slide" id="s3"><h2>학생이 고친 원인</h2></section>', out)
 
 
+@unittest.skipUnless(NODE, "node is not installed")
+class ApplySectionsTest(unittest.TestCase):
+    def test_writes_by_id_not_by_position(self):
+        # Slides after a split: the third slide is now s5, s3 is fourth.
+        els = "[" + ",".join(f"{{id: '{i}', innerHTML: 'old {i}'}}"
+                             for i in ["s1", "s2", "s5", "s3", "s4"]) + "]"
+        out = run(f"(() => {{ const els = {els}; "
+                  f"applySections({{s3: 'new s3', s9: 'gone'}}, els); "
+                  f"return els.map(e => e.innerHTML); }})()")
+        self.assertEqual(out, ["old s1", "old s2", "old s5", "new s3", "old s4"])
+
+
 class ServedModeHooksTest(unittest.TestCase):
     """The browser side of the serve.py contract."""
 
@@ -146,6 +158,18 @@ class ServedModeHooksTest(unittest.TestCase):
     def test_poll_intervals(self):
         self.assertIn("const POLL_MS = 3000, POLL_SLOW_MS = 30000;", self.text)
         self.assertIn("misses >= 2 ? POLL_SLOW_MS : POLL_MS", self.text)
+
+    def test_new_base_only_when_the_server_says_the_file_held_it(self):
+        js = self.text[self.text.index("async function send"):]
+        js = js[:js.index("\n}\n")]
+        self.assertIn("if (r.body.base_current) baseHash = r.body.hash;", js)
+        self.assertNotIn("version()", js)
+
+    def test_old_autosave_moved_aside_is_announced(self):
+        js = self.text[self.text.index("(function restoreLocal"):]
+        js = js[:js.index("\n})();\n")]
+        self.assertIn("':stale'", js)
+        self.assertIn("notice('legacy'", js)
 
     def test_one_save_at_a_time(self):
         js = self.text[self.text.index("async function send"):]

@@ -595,13 +595,13 @@ function sectionHTML(s) {
     return c.innerHTML;
 }
 const sectionsNow = () => Object.fromEntries(slides.map(s => [s.id, sectionHTML(s)]));
-/* Write sections by id, never by position: into the page, or into a copy */
-function applySections(map, els = slides) {
-    els.forEach(s => { if (s.id in map) s.innerHTML = map[s.id]; });
-}
 
 /* pure: begin */
 /* Save rules on {id: html} maps, no DOM. tests/test_stage_save.py runs this block in Node */
+/* Write sections into slide elements by id, never by position: the page, or a copy */
+function applySections(map, els) {
+    els.forEach(s => { if (s.id in map) s.innerHTML = map[s.id]; });
+}
 function changed(base, current) {
     const out = {};
     for (const id in current) if (id in base && current[id] !== base[id]) out[id] = current[id];
@@ -711,7 +711,7 @@ async function restoreStash(key, stash) {
         const payload = stashPayload(stash);
         const r = await send(payload, false);
         if (r && r.status < 300) {
-            applySections(payload.sections);
+            applySections(payload.sections, slides);
             renderNotes();
             saveLocal();
         }
@@ -719,7 +719,7 @@ async function restoreStash(key, stash) {
         return;
     }
     const plan = mergeStash(stash, sectionsNow());
-    applySections(plan.apply);
+    applySections(plan.apply, slides);
     renderNotes();
     saveLocal();
     if (!plan.conflicts.length) return dropStash(key);
@@ -740,6 +740,9 @@ async function restoreStash(key, stash) {
             /* An autosave from the older page (by position): keep it, never apply it */
             localStorage.setItem(STORE + ':stale', JSON.stringify(saved));
             localStorage.removeItem(STORE);
+            notice('legacy', '예전 페이지의 자동 저장은 적용하지 않고 따로 보관했어요', [
+                ['닫기', () => clearNotice('legacy')],
+            ]);
         } else if (saved) {
             const plan = restorePlan(saved, baseHash, base);
             if (plan.stash) {
@@ -748,7 +751,7 @@ async function restoreStash(key, stash) {
                 if (old) saved.sections = Object.assign(old.sections, saved.sections);
                 localStorage.setItem(key, JSON.stringify(saved));
                 localStorage.removeItem(STORE);
-            } else applySections(plan.apply);
+            } else applySections(plan.apply, slides);
         }
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -786,19 +789,16 @@ function flash(text) {
 async function send(payload, own) {
     if (saving) return undefined;
     saving = true;
-    const before = await version();
-    let r = null;
-    if (before) {
-        try {
-            const res = await fetch('/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Jungle-Deck': 'save' },
-                body: JSON.stringify(payload),
-            });
-            r = { status: res.status, body: await res.json().catch(() => ({})) };
-        } catch (e) {
-            r = null;
-        }
+    let r;
+    try {
+        const res = await fetch('/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Jungle-Deck': 'save' },
+            body: JSON.stringify(payload),
+        });
+        r = { status: res.status, body: await res.json().catch(() => ({})) };
+    } catch (e) {
+        r = null;
     }
     saving = false;
     if (!r) {
@@ -806,11 +806,12 @@ async function send(payload, own) {
         exportFile(payload.sections);
     } else if (r.status < 300) {
         Object.assign(base, payload.sections);
-        /* Adopt the new hash only when the file held this page's base before
-           the write. Otherwise it also holds agent edits the page does not
-           show: keep the old hash, so a later save of such a section gets a
-           409 instead of overwriting it, and the poll offers R */
-        if (before.hash === baseHash) baseHash = r.body.hash;
+        /* Adopt the new hash only when the file held this page's base just
+           before the write (serve.py checks it under its save lock).
+           Otherwise the file also holds agent edits the page does not show:
+           keep the old hash, so a later save of such a section gets a 409
+           instead of overwriting it, and the poll offers R */
+        if (r.body.base_current) baseHash = r.body.hash;
         conflicted = false;
         saveLocal();
         clearNotice('conflict'); clearNotice('error'); clearNotice('off');
