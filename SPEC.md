@@ -139,7 +139,9 @@ layout, sites, or habits. The author's personal style file is not shipped.
 - **Edit scope (#31).** In edit mode every element with its own text inside a
   slide is editable; anything inside `[data-evidence]` stays locked, and SVG
   text stays locked. A toolbar sets text steps `jd-t-*` (zoom 0.75, 0.875,
-  1, 1.25, 1.5) and box width steps `jd-w-*`; it is one Tab stop. The agent
+  1, 1.25, 1.5) and box width steps `jd-w-*` (0.75, 0.875, 1, 1.125, 1.25
+  of the box's own width, clamped to the slide and the next box); it is one
+  Tab stop. 복원 is refused while a flagged slide has unsaved edits. The agent
   keeps the student's steps like the student's words.
 - **Log.** One line per event in `<save folder>/.serve.log`: `save <ids>
   backup=`, `save (no change)`, `409 <ids> payload=`, `restore <ids>
