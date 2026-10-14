@@ -47,7 +47,7 @@ The scripts read these key names; the agent reads all of them. Do not rename the
 | Python command | `python_cmd` | The first command that passes the Python check | Run the Python check, then write the command it found. | The Python check. |
 | current presentation | `current_brief` | `""` | Resume searches only the current directory (`reference/brief-template.md`). | Written when a presentation is created. |
 | previous presentation | `prev_brief` | `""` | Context collection uses the last 7 days and has no last-week topic (D8). | Written when a presentation is created: it gets the old `current_brief` value. |
-| Pages repo path | `pages_repo` | `""` | No publish target. `publish` stops at a finished local HTML and prints its path. No copy, no push, no card. | `publish`, when the student says yes to a separate deploy (D12). |
+| Pages repo path | `pages_repo` | `""` | No Pages repo yet. Without a deploy, `publish` stops at the local HTML. When the student says yes to a separate deploy, `publish` asks for the path. | `publish`, when the student says yes to a separate deploy (D12). |
 | Pages source folder | `pages_dir` | `<pages_repo>` (the repo root) | Use the default. | `publish`: read from `gh api repos/<owner>/<repo>/pages`, else asked once ("이 저장소는 어느 폴더가 배포돼요? (루트 / docs)"). |
 | Pages URL base | `pages_url_base` | Derived from `pages_repo` (see "Pages" in SPEC.md) | Ignored when `pages_repo` is empty. Else use the default. | `publish`, after the student confirms the derived URL once. |
 | card format | `card_format` | `builtin` | Use `builtin`. | Never asked; write `builtin`. |
@@ -73,7 +73,8 @@ The scripts read these key names; the agent reads all of them. Do not rename the
   last week's topic and the start of the D8 window.
 - `pages_repo`: a local clone of a GitHub Pages repository.
 - `pages_dir`: the folder that GitHub Pages serves: `pages_repo` itself, or
-  `<pages_repo>/docs`. The page copy goes to `<pages_dir>/study/weekNN/`
+  `<pages_repo>/docs`. A relative value is read below `pages_repo` (`.` or
+  `docs`); an absolute value is used as it is. The page copy goes to `<pages_dir>/study/weekNN/`
   when the week is known, else `<pages_dir>/study/` (D12).
 - `pages_url_base`: the URL that serves `pages_dir`. It ends with `/`.
 - `card_format`: `builtin`, or a path to a file that holds one card snippet
