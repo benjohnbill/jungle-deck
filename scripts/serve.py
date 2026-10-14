@@ -7,6 +7,10 @@ loaded. A section is written only when the source still holds what that
 version held (a three-way merge per section id); any clash writes nothing,
 answers 409, and keeps the payload in _backup/rejected-<stamp>.json.
 
+When an agent edit overwrote the words of a student save, the page either
+re-sends that save with "restore": true (logged as `restore`) or POSTs
+/keep (logged as `keep`) to accept the agent's words (issue #30).
+
 Stdlib only, Python 3.8+. Binds 127.0.0.1 only.
 
   <python_cmd> scripts/serve.py --deck <save folder>/<slug>.html
@@ -32,8 +36,10 @@ import pull_edits  # noqa: E402  (sections, clean, backup, write_atomic)
 PORT_BASE, PORT_SPAN = 47000, 1000
 MAX_BODY = 5 * 1024 * 1024
 MAX_SNAPSHOTS = 100   # an older base_hash gets 409, which keeps the student's text
-SAVE_PATH = "/save"
+SAVE_PATH, KEEP_PATH = "/save", "/keep"
 SAVE_HEADER = ("X-Jungle-Deck", "save")   # a custom header forces a CORS preflight
+# Section ids go into .serve.log, which the agent reads: no spaces, no commas.
+SECTION_ID = re.compile(r"[\w.:-]+")
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                ".gif": "image/gif", ".webp": "image/webp", ".avif": "image/avif"}
 # No .svg: an SVG opened on this origin could run script and POST /save.
@@ -88,9 +94,15 @@ class Server(ThreadingHTTPServer):
     def save(self, payload):
         """Three-way save of the sent sections; return (status, reply object)."""
         base_hash, sent = payload.get("base_hash"), payload.get("sections")
+        restore = payload.get("restore", False)
         if not isinstance(base_hash, str) or not isinstance(sent, dict) or \
-                not all(isinstance(v, str) for v in sent.values()):
-            return 400, {"error": "need base_hash and sections {id: html}"}
+                not all(isinstance(v, str) for v in sent.values()) or \
+                not isinstance(restore, bool):
+            return 400, {"error": "need base_hash, sections {id: html}, restore true|false"}
+        if not all(SECTION_ID.fullmatch(i) for i in sent):
+            # Not logged (the id could forge a line); the text is kept all the same.
+            return 400, {"error": "bad section id", "payload": str(self.reject(payload))}
+        verb = "restore" if restore else "save"
         with self.lock:
             text, h = self.current()
             base = self.snapshots.get(base_hash)
@@ -118,7 +130,7 @@ class Server(ThreadingHTTPServer):
             # keeps its old base instead of adopting the new hash.
             current = h == base_hash
             if not edits:
-                self.log("save (no change)")
+                self.log(f"{verb} (no change)")
                 return 200, {"hash": h, "written": [], "base_current": current}
             out = text
             for start, end, new, _ in sorted(edits, reverse=True):
@@ -127,8 +139,22 @@ class Server(ThreadingHTTPServer):
             pull_edits.write_atomic(self.deck, out)
             _, h = self.current()
             ids = [i for *_, i in edits]
-            self.log(f"save {','.join(ids)} backup={copy}")
+            self.log(f"{verb} {','.join(ids)} backup={copy}")
             return 200, {"hash": h, "written": ids, "base_current": current}
+
+    def keep(self, payload):
+        """Log that the student kept the agent's words in these sections."""
+        ids = payload.get("keep")
+        if not isinstance(ids, list) or not ids or \
+                not all(isinstance(i, str) and SECTION_ID.fullmatch(i) for i in ids):
+            return 400, {"error": "need keep [ids]"}
+        with self.lock:
+            text, _ = self.current()
+            missing = set(ids) - {i for i, _ in pull_edits.sections(text)}
+            if missing:
+                return 400, {"error": "no such section: " + ",".join(sorted(missing))}
+            self.log(f"keep {','.join(ids)}")
+        return 200, {"kept": ids}
 
     def reject(self, payload):
         """Keep a rejected payload in _backup/rejected-<stamp>.json; return its path."""
@@ -218,7 +244,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         port = self.server.port
         self.close_connection = True
-        if urlsplit(self.path).path != SAVE_PATH:
+        path = urlsplit(self.path).path
+        if path not in (SAVE_PATH, KEEP_PATH):
             return self.reply(404, {"error": "not found"})
         if self.headers.get("Origin") not in (f"http://127.0.0.1:{port}",
                                               f"http://localhost:{port}") \
@@ -240,7 +267,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(400, {"error": "body is not JSON"})
         if not isinstance(payload, dict):
             return self.reply(400, {"error": "body is not a JSON object"})
-        self.reply(*self.server.save(payload))
+        handler = {SAVE_PATH: self.server.save, KEEP_PATH: self.server.keep}[path]
+        self.reply(*handler(payload))
 
 
 def make_server(deck):

@@ -144,6 +144,48 @@ class ApplySectionsTest(unittest.TestCase):
         self.assertEqual(out, ["old s1", "old s2", "old s5", "new s3", "old s4"])
 
 
+@unittest.skipUnless(NODE, "node is not installed")
+class OverwrittenSaveTest(unittest.TestCase):
+    """#30: a student save is overwritten when the file's words differ from it.
+    Words, not markup: the agent may change the layout around them."""
+
+    SAVED = {"s2": '<div class="slide-content"><h2>학생이 쓴 <em>제목</em></h2>'
+                   '<p class="punch">한 줄 결론</p></div>'}
+
+    def flagged(self, file_s2, saved=None):
+        saved = saved or self.SAVED
+        return run(f"overwritten({json.dumps(saved)}, {json.dumps({'s2': file_s2})})")
+
+    def test_changed_words_are_flagged(self):
+        self.assertEqual(self.flagged('<div class="slide-content"><h2>에이전트 <em>제목</em></h2>'
+                                      '<p class="punch">한 줄 결론</p></div>'), ["s2"])
+
+    def test_a_removed_sentence_is_flagged(self):
+        self.assertEqual(self.flagged('<div class="slide-content"><h2>학생이 쓴 <em>제목</em></h2></div>'),
+                         ["s2"])
+
+    def test_layout_only_change_is_not_flagged(self):
+        # New wrapper, other classes, a step, indentation, the space as a <br>.
+        layout = ('\n  <div class="slide-content wide"><div class="col">\n'
+                  '    <h2 class="big" data-step="1">학생이 쓴<br><em>제목</em></h2>\n'
+                  '    <p class="punch small">한  줄\n결론</p></div></div>\n')
+        self.assertEqual(self.flagged(layout), [])
+
+    def test_entities_compare_as_their_characters(self):
+        saved = {"s2": "<p>a &lt; b &amp; c\u00a0d</p>"}
+        self.assertEqual(self.flagged("<p>a &#60; b &#x26; c&nbsp;d</p>", saved), [])
+        self.assertEqual(self.flagged("<p>a &lt; b &amp; c e</p>", saved), ["s2"])
+
+    def test_a_section_gone_from_the_file_is_not_flagged(self):
+        # Nothing to restore into; the server's backup still holds it.
+        self.assertEqual(run(f"overwritten({json.dumps(self.SAVED)}, {{}})"), [])
+
+    def test_ids_come_back_sorted(self):
+        saved = {"s3": "<p>c</p>", "s1": "<p>a</p>"}
+        self.assertEqual(run(f"overwritten({json.dumps(saved)}, "
+                             f"{{s1: '<p>A</p>', s3: '<p>C</p>'}})"), ["s1", "s3"])
+
+
 class ServedModeHooksTest(unittest.TestCase):
     """The browser side of the serve.py contract."""
 
@@ -162,7 +204,7 @@ class ServedModeHooksTest(unittest.TestCase):
     def test_new_base_only_when_the_server_says_the_file_held_it(self):
         js = self.text[self.text.index("async function send"):]
         js = js[:js.index("\n}\n")]
-        self.assertIn("if (r.body.base_current) baseHash = r.body.hash;", js)
+        self.assertIn("if (r.body.base_current && payload.base_hash === baseHash) baseHash = r.body.hash;", js)
         self.assertNotIn("version()", js)
 
     def test_old_autosave_moved_aside_is_announced(self):
@@ -192,6 +234,35 @@ class ServedModeHooksTest(unittest.TestCase):
         self.assertNotRegex(js, r"catch \(e\) \{\s*\}")
         self.assertIn("notice('storage', STORAGE_FAILED)", js)
         self.assertIn("const STORAGE_FAILED = '자동 저장이 안 돼요", self.text)
+
+    def test_restore_signal_is_wired(self):
+        # #30: saves are remembered, checked on load and on each file change.
+        t = self.text
+        send = t[t.index("async function send"):]
+        self.assertIn("rememberSaved(payload.sections);", send[:send.index("\n}\n")])
+        self.assertIn("const SAVED = STORE + ':saved';", t)
+        poll = t[t.index("async function poll"):]
+        self.assertIn("checkFile()", poll[:poll.index("\n}\n")])
+        self.assertIn("checkOverwrites({ ...base }, baseHash);", t)
+        self.assertIn("restore: true", t)
+        self.assertIn("post('/keep', { keep: ids })", t)
+        for s in ["에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (",
+                  "에이전트에게 '복원했어'라고 말해 주세요", "'그대로 두기'"]:
+            self.assertIn(s, t)
+
+    def test_a_kept_409_payload_becomes_the_guarded_save(self):
+        # The agent merges a 409 payload into the file; the guard must not
+        # then offer to put the older save back over it.
+        js = self.text[self.text.index("async function send"):]
+        js = js[:js.index("\n}\n")]
+        conflict = js[js.index("r.status === 409"):]
+        self.assertIn("rememberSaved(payload.sections);", conflict[:conflict.index("} else {")])
+
+    def test_restore_keeps_unsaved_edits_on_screen(self):
+        js = self.text[self.text.index("async function restoreSaved"):]
+        js = js[:js.index("\n}\n")]
+        self.assertIn("sectionHTML(document.getElementById(id)) === base[id]", js)
+        self.assertNotIn("applySections(sections, slides)", js)
 
     def test_no_restore_by_index(self):
         self.assertNotIn("saved.data[i]", self.text)

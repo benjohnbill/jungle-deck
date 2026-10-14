@@ -640,6 +640,26 @@ function stashPayload(stash) {
     for (const id in stash.sections) sections[id] = stash.sections[id].current;
     return { base_hash: stash.base_hash, sections };
 }
+/* The words of a section: tags dropped, entities decoded, whitespace removed. Removed,
+   not collapsed: a layout change moves the breaks between blocks (</h2><p> vs </h2>\n<p>) */
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+function plainText(html) {
+    return html.replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
+            e[0] !== '#' ? (ENTITIES[e.toLowerCase()] ?? m)
+            : /^#x/i.test(e) ? String.fromCodePoint(parseInt(e.slice(2), 16))
+            : String.fromCodePoint(parseInt(e.slice(1), 10)))
+        .replace(/\s+/g, '');
+}
+/* Student saves whose words the file no longer holds (an agent edit overwrote them).
+   Words, not markup: the agent may change the layout around them. An id gone from
+   the file is not flagged: there is nothing to restore into */
+function overwritten(saved, file) {
+    return Object.keys(saved)
+        .filter(id => id in file && plainText(saved[id]) !== plainText(file[id]))
+        .sort();
+}
 /* pure: end */
 
 /* Served: serve.py puts the hash of the served version in a jd-base meta */
@@ -768,6 +788,21 @@ async function restoreStash(key, stash) {
 const POLL_MS = 3000, POLL_SLOW_MS = 30000;
 let saving = false, conflicted = false, savedTimer = null;
 
+/* POST a JSON body with the page's save headers. Returns {status, body}, or
+   null when the server did not answer */
+async function post(path, body) {
+    try {
+        const res = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Jungle-Deck': 'save' },
+            body: JSON.stringify(body),
+        });
+        return { status: res.status, body: await res.json().catch(() => ({})) };
+    } catch (e) {
+        return null;
+    }
+}
+
 /* GET /version -> {slug, source, hash}, or null when the server did not answer */
 async function version() {
     try {
@@ -783,35 +818,27 @@ function flash(text) {
     savedTimer = setTimeout(() => clearNotice('saved'), 3000);
 }
 
-/* POST {base_hash, sections}. `own`: the sections come from this page's
-   autosave, not from a stash. Returns {status, body}; null when the server
-   did not answer; undefined while another save runs */
+/* POST {base_hash, sections} to /save. `own`: the sections come from this
+   page's autosave, not from a stash. Returns {status, body}; null when the
+   server did not answer; undefined while another save runs */
 async function send(payload, own) {
     if (saving) return undefined;
     saving = true;
-    let r;
-    try {
-        const res = await fetch('/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Jungle-Deck': 'save' },
-            body: JSON.stringify(payload),
-        });
-        r = { status: res.status, body: await res.json().catch(() => ({})) };
-    } catch (e) {
-        r = null;
-    }
+    const r = await post('/save', payload);
     saving = false;
     if (!r) {
         notice('off', SERVER_OFF);
         exportFile(payload.sections);
     } else if (r.status < 300) {
         Object.assign(base, payload.sections);
+        rememberSaved(payload.sections);
         /* Adopt the new hash only when the file held this page's base just
            before the write (serve.py checks it under its save lock).
            Otherwise the file also holds agent edits the page does not show:
            keep the old hash, so a later save of such a section gets a 409
-           instead of overwriting it, and the poll offers R */
-        if (r.body.base_current) baseHash = r.body.hash;
+           instead of overwriting it, and the poll offers R. A stash or a
+           restore is sent with another base, so it never moves this one */
+        if (r.body.base_current && payload.base_hash === baseHash) baseHash = r.body.hash;
         conflicted = false;
         saveLocal();
         clearNotice('conflict'); clearNotice('error'); clearNotice('off');
@@ -822,8 +849,12 @@ async function send(payload, own) {
         if (editing) toggleEdit();
         notice('conflict', '에이전트 수정과 겹쳐요 (' + (r.body.conflicts || []).join(', ')
                            + "). 에이전트에게 '겹친 거 합쳐줘'라고 말해 주세요");
-        if (own && r.body.payload) {   /* the server kept the edits in _backup/, so the autosave may go */
-            try { localStorage.removeItem(STORE); } catch (e) { notice('storage', STORAGE_FAILED); }
+        if (r.body.payload) {
+            /* The agent merges these words into the file: they are the newest
+               student text to guard, not the older save */
+            rememberSaved(payload.sections);
+            /* the server kept the edits in _backup/, so the autosave may go */
+            if (own) try { localStorage.removeItem(STORE); } catch (e) { notice('storage', STORAGE_FAILED); }
         }
     } else {
         notice('error', '저장이 안 됐어요 (HTTP ' + r.status + ') — 대신 파일로 내보냈어요');
@@ -839,6 +870,87 @@ function save() {
     send({ base_hash: baseHash, sections }, true);
 }
 
+/* ===========================================
+   Restore signal: an agent edit overwrote words the student saved.
+   After each 2xx save the page keeps the saved sections (survives R). On load
+   and on every file change it compares their words with the file's. 복원
+   saves them again with "restore": true; 그대로 두기 POSTs /keep. serve.py
+   logs `restore` or `keep`, and the agent reads that line
+   =========================================== */
+const SAVED = STORE + ':saved';   /* {id: html} of the last save of each section */
+function savedMap() {
+    try { return JSON.parse(localStorage.getItem(SAVED) || '{}'); }
+    catch (e) { notice('storage', STORAGE_FAILED); return {}; }
+}
+function rememberSaved(sections) {
+    try { localStorage.setItem(SAVED, JSON.stringify(Object.assign(savedMap(), sections))); }
+    catch (e) { notice('storage', STORAGE_FAILED); }
+}
+/* file: {id: html} of the source with the hash `fileHash` */
+function checkOverwrites(file, fileHash) {
+    const saved = savedMap();
+    const gone = Object.keys(saved).filter(id => !(id in file));   /* a deleted slide: the server backup has it */
+    if (gone.length) {
+        gone.forEach(id => { delete saved[id]; });
+        try { localStorage.setItem(SAVED, JSON.stringify(saved)); } catch (e) { notice('storage', STORAGE_FAILED); }
+    }
+    const ids = overwritten(saved, file);
+    if (!ids.length) return clearNotice('overwrite');
+    notice('overwrite', '에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (' + ids.join(', ')
+                        + "). 복원하면 에이전트에게 '복원했어'라고 말해 주세요", [
+        ['복원', () => restoreSaved(ids, saved, fileHash)],
+        ['그대로 두기', () => keepAgent(ids, file)],
+        ['닫기', () => clearNotice('overwrite')],   /* back on the next load or file change */
+    ]);
+}
+async function restoreSaved(ids, saved, fileHash) {
+    const sections = {};
+    ids.forEach(id => { sections[id] = saved[id]; });
+    /* A slide with unsaved edits keeps them on screen; they stay unsaved */
+    const clean = ids.filter(id => sectionHTML(document.getElementById(id)) === base[id]);
+    const r = await send({ base_hash: fileHash, sections, restore: true }, false);
+    if (!r || r.status >= 300) return;   /* send() showed why; a 409 kept the payload */
+    clean.forEach(id => { document.getElementById(id).innerHTML = sections[id]; });
+    renderNotes();
+    saveLocal();
+    clearNotice('overwrite');
+    notice('restored', '복원했어요 (' + ids.join(', ') + "). 에이전트에게 '복원했어'라고 말해 주세요", [
+        ['닫기', () => clearNotice('restored')],
+    ]);
+}
+async function keepAgent(ids, file) {
+    const r = await post('/keep', { keep: ids });
+    if (!r) return notice('off', SERVER_OFF);
+    if (r.status >= 300) return notice('error', '그대로 두기를 서버에 알리지 못했어요 (HTTP ' + r.status + ')');
+    const kept = {};
+    ids.forEach(id => { kept[id] = file[id]; });
+    rememberSaved(kept);
+    clearNotice('overwrite');
+}
+/* Fetch the source as served and check it; the jd-base meta names its hash */
+let checkedHash = null, checking = false;
+async function checkFile() {
+    if (checking) return;
+    checking = true;
+    try {
+        const res = await fetch(location.pathname, { cache: 'no-store' });
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const meta = doc.querySelector('meta[name="jd-base"]');
+        if (res.ok && meta) {
+            checkedHash = meta.content;
+            checkOverwrites(Object.fromEntries(
+                Array.from(doc.querySelectorAll('.slide'), s => [s.id, sectionHTML(s)])), meta.content);
+        }
+    } catch (e) {
+        /* the poll reports a server that is off */
+    }
+    checking = false;
+}
+if (served) {
+    checkedHash = baseHash;
+    checkOverwrites({ ...base }, baseHash);   /* base: the file as loaded */
+}
+
 /* Change notice: poll /version every 3 s; after two misses, every 30 s */
 let misses = 0, reloadReady = false;
 async function poll() {
@@ -851,6 +963,7 @@ async function poll() {
     }
     if (misses >= 2) clearNotice('off');
     misses = 0;
+    if (!saving && v.hash !== checkedHash) checkFile();
     if (saving) {
         /* the hash moves under a save; judge it on the next poll */
     } else if (v.hash !== baseHash) {

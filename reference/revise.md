@@ -1,7 +1,7 @@
 ---
 scope: The revise phase (SPEC D11, D15): revise server, save in the page, read the change, adjust, conflicts, and the file-export fallback with pull_edits.py
 authority: SPEC.md D11, D15, "Revise server". CLI lines here must match `scripts/serve.py --help` and `scripts/pull_edits.py --help`; page behaviour must match templates/stage.html. tests/test_build_revise_reference.py checks them
-status: revised 2026-10-15 (#21, #28); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
+status: revised 2026-10-15 (#21, #28, #30); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
 ---
 
 # Revise phase
@@ -44,9 +44,11 @@ One pass is one round.
    Where the Claude Code `Monitor` tool works, you may also run `tail -n0 -F <save folder>/.serve.log` under it and start step 4 on each new line by yourself. Without `Monitor`, wait for the student (D15).
 4. **Read the log.** Read every line of `.serve.log` that is newer than the last line of the last round, not only the last line: a later `save (no change)` can hide an earlier save. No new line: a save with no change in the page sends nothing and writes no line. Then ask the student whether the page said "바뀐 곳이 없어요". Handle each new line by its form:
    - `<time> save <ids> backup=<path>`: the server wrote those sections. Go to step 5.
-   - `<time> save (no change)`: nothing changed. Ask the student whether they saved after the edit.
+   - `<time> save (no change)` or `<time> restore (no change)`: nothing changed. Ask the student whether they saved after the edit.
    - `<time> 409 <ids> payload=<path>`: nothing was written. Go to "When the save is refused".
-5. **Read the diff.** Run `diff -u <backup> <save folder>/<slug>.html` with the backup path from the first new `save` line. That backup holds the page before all of the new saves. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Undo it only when the student says so, under the edit rule.
+   - `<time> restore <ids> backup=<path>`: your edit overwrote the words of a student save, and the student restored them. The student may say "복원했어". Re-read the page. Run `diff -u <backup> <save folder>/<slug>.html`: the backup holds your edit, so the diff shows your own change that the restore removed. Redo that change on top of the student's words, under the edit rule. If it needs other words, use the proposal rule (`reference/grill.md`). Then go on from step 6.
+   - `<time> keep <ids>`: the student accepted your wording in those sections after the page flagged it. Nothing to merge. Note it in the round's row (step 7).
+5. **Read the diff.** Run `diff -u <backup> <save folder>/<slug>.html` with the backup path from the first new `save` line. That backup holds the page before all of the new saves. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Undo it only when the student says so, under the edit rule. An undo changes words the student saved, so the page then shows "에이전트 수정 뒤 내 저장 문구가 바뀌었어요": tell the student to press "그대로 두기".
 6. **Adjust.** Fix the layout and the evidence to match the student's edits, without changing their words. Every change follows the edit rule (Rules):
    - A longer thesis or note: change the layout or the size token, not the text.
    - A slide that now goes over the density limits in `reference/build.md`: split it, or cut log lines. The thesis of a new slide follows the proposal rule (`reference/grill.md`).
@@ -66,6 +68,7 @@ While served, the page checks the source every 3 s. After two failed checks it c
 | "에이전트가 수정했어요 — R로 새로고침" | You changed the source; the page has no unsaved edits. | Tell the student to press `R`. |
 | "에이전트가 수정했어요 — 먼저 저장(Ctrl+S)하세요" | You changed the source while the student had unsaved edits. | Tell the student to save first. A section that you both changed gets a 409. |
 | "저장 안 된 편집이 있어요 (<ids>) — 그 뒤에 파일이 바뀌었어요", with "복원", "파일로 내보내기", "닫기" | The page kept edits that were never saved, and the file changed after them. | Tell the student to press "복원". On the server it is a normal save of those sections: read the log as in step 4. |
+| "에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (<ids>)", with "복원", "그대로 두기" | The words of a student save are not in the file any more: your edit changed them. The page compares words, not markup, so a layout change alone does not show it. | Let the student choose. "복원" writes a `restore` line, "그대로 두기" a `keep` line: handle it as in step 4. |
 | "자동 저장이 안 돼요 — 지금 Ctrl+S로 저장하세요" | The browser refused local storage. | Tell the student to save now. |
 
 ## When the save is refused

@@ -204,11 +204,34 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
     def test_log_lines_match_serve(self):
         # The log forms the doc names are the ones serve.py writes.
         serve = SERVE.read_text(encoding="utf-8")
-        for form in ['f"save {', 'f"409 {', '"save (no change)"']:
+        for form in ['f"{verb} {', 'f"{verb} (no change)"', 'f"409 {', 'f"keep {',
+                     '"restore" if restore else "save"']:
             self.assertIn(form, serve)
         body = section(self.text, "The loop")
-        for form in ["save <ids> backup=", "409 <ids> payload=", "save (no change)"]:
+        for form in ["save <ids> backup=", "409 <ids> payload=", "save (no change)",
+                     "restore <ids> backup=", "keep <ids>"]:
             self.assertIn(form, body)
+
+    def test_restore_and_keep_lines(self):
+        # #30: a restore means the agent overwrote a student save.
+        body = flat(section(self.text, "The loop"))
+        restore = body[body.index("restore <ids> backup="):body.index("keep <ids>")]
+        self.assertRegex(restore, r"(?i)re-read the page")
+        self.assertIn("diff -u <backup>", restore)
+        self.assertRegex(restore, r"(?i)your own change")
+        self.assertRegex(restore, r"(?i)redo .*on top of the student's words.*edit rule")
+        self.assertRegex(restore, r"(?i)proposal rule")
+        self.assertIn("복원했어", restore)
+        self.assertIn("복원했어", self.stage)
+        keep = body[body.index("keep <ids>"):]
+        self.assertRegex(keep[:300], r"(?i)accepted your wording")
+        self.assertRegex(keep[:300], r"(?i)row \(step 7\)")
+
+    def test_overwrite_notice_matches_template(self):
+        text = flat(section(self.text, "What the student sees"))
+        for s in ["에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (", "그대로 두기"]:
+            self.assertIn(s, text)
+            self.assertIn(s, self.stage)
 
     def test_monitor_is_optional(self):
         text = flat(self.text)
