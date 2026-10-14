@@ -42,11 +42,11 @@ One pass is one round.
 2. **Student saves.** The student presses Ctrl+S. The page sends only the sections the student changed. The server writes each one only when its source section still holds what the page loaded (a three-way merge per section). The page shows "저장했어요 (<ids>)".
 3. **Student tells you.** The default: the student says "저장했어, 봐줘" or similar.
    Where the Claude Code `Monitor` tool works, you may also run `tail -n0 -F <save folder>/.serve.log` under it and start step 4 on each new line by yourself. Without `Monitor`, wait for the student (D15).
-4. **Read the log.** Read the last line of `.serve.log`. Check that its time is newer than the line of the last round: a save with no change in the page sends nothing and writes no line. An old line: ask the student whether the page said "바뀐 곳이 없어요". Its forms:
+4. **Read the log.** Read every line of `.serve.log` that is newer than the last line of the last round, not only the last line: a later `save (no change)` can hide an earlier save. No new line: a save with no change in the page sends nothing and writes no line. Then ask the student whether the page said "바뀐 곳이 없어요". Handle each new line by its form:
    - `<time> save <ids> backup=<path>`: the server wrote those sections. Go to step 5.
    - `<time> save (no change)`: nothing changed. Ask the student whether they saved after the edit.
    - `<time> 409 <ids> payload=<path>`: nothing was written. Go to "When the save is refused".
-5. **Read the diff.** Run `diff -u <backup> <save folder>/<slug>.html` with the backup path from the log line. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Undo it only when the student says so, under the edit rule.
+5. **Read the diff.** Run `diff -u <backup> <save folder>/<slug>.html` with the backup path from the first new `save` line. That backup holds the page before all of the new saves. Tell the student about any change that looks accidental (for example, a deleted panel or a stray character). Undo it only when the student says so, under the edit rule.
 6. **Adjust.** Fix the layout and the evidence to match the student's edits, without changing their words. Every change follows the edit rule (Rules):
    - A longer thesis or note: change the layout or the size token, not the text.
    - A slide that now goes over the density limits in `reference/build.md`: split it, or cut log lines. The thesis of a new slide follows the proposal rule (`reference/grill.md`).

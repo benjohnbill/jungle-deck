@@ -198,7 +198,8 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
         positions = [body.find(m) for m in marks]
         self.assertNotIn(-1, positions, f"missing a step of {marks}")
         self.assertEqual(positions, sorted(positions), "loop steps out of order")
-        self.assertRegex(body, r"(?i)last line of `\.serve\.log`")
+        # #28: one round can hold several saves; the last line can hide one.
+        self.assertRegex(body, r"(?i)every line of `\.serve\.log` that is newer than")
 
     def test_log_lines_match_serve(self):
         # The log forms the doc names are the ones serve.py writes.
