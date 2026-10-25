@@ -79,6 +79,13 @@ class Report(unittest.TestCase):
         self.assertIn('p.punch "long line"', lines[1])
         self.assertIn("s2", lines[-1])
 
+    def test_fonts_that_did_not_load_are_noted(self):
+        rec = clean("s1")
+        rec["fonts"] = "loading"
+        lines, code = check_layout.report([("1280x720", rec)])
+        self.assertEqual(code, 0)
+        self.assertTrue(any("fallback font" in l for l in lines), lines)
+
     def test_overlap_names_both_boxes(self):
         big = clean("s1")
         big["sections"][0]["overlap"] = [['h1 "title"', "svg"]]
@@ -183,6 +190,13 @@ class Render(unittest.TestCase):
             code, out, err = run_main([str(page)])
             self.assertEqual(os.listdir(d), ["deck.html"], "the measuring copy is removed")
         return code, out.splitlines(), err
+
+    def test_a_web_font_that_never_loads_does_not_hang_the_check(self):
+        # A Google Fonts link with no network blocked `load` for good (Run A, 2026-10-26).
+        dead = '<link rel="stylesheet" href="http://10.255.255.1/font.css">'
+        code, lines, err = self.check(TEMPLATE.replace("</head>", dead + "</head>", 1))
+        self.assertEqual(code, 0, "\n".join(lines) + err)
+        self.assertTrue(any("fallback font" in l for l in lines), lines)
 
     def test_the_template_is_clean(self):
         code, lines, err = self.check(TEMPLATE)

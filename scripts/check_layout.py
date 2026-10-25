@@ -29,6 +29,7 @@ from pathlib import Path, PureWindowsPath
 SIZES = ((1280, 720), (1920, 1080))
 EXIT_CLEAN, EXIT_FOUND, EXIT_ERROR, EXIT_SKIPPED = 0, 1, 2, 3
 TIMEOUT_S = 60
+FONT_WAIT_MS, LOAD_WAIT_MS, STOP_MS = 3000, 6000, 8000
 
 PATH_NAMES = ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser",
               "microsoft-edge", "microsoft-edge-stable", "chrome", "msedge")
@@ -79,12 +80,25 @@ function run() {
         }));
         return {id: s.id || '#' + (i + 1), overflow, overlap};
     });
-    out({viewport: [innerWidth, innerHeight], sections});
+    const missing = document.querySelector('link[data-jd-remote][media=print]');
+    out({viewport: [innerWidth, innerHeight], fonts: missing ? 'missing' : document.fonts.status, sections});
 }
-addEventListener('load', () => document.fonts.ready.then(run));
+/* A web font that never arrives (no network) must not block the check: wait for it a little,
+   then measure with the fallback font, and say so (record.fonts) */
+let started = false;
+const go = () => { if (!started) { started = true; run(); } };
+const wait = ms => new Promise(r => setTimeout(r, ms));
+addEventListener('load', () => Promise.race([document.fonts.ready, wait(FONT_WAIT_MS)]).then(go));
+setTimeout(go, LOAD_WAIT_MS);
 })();
 </script>
 """
+
+MEASURE_JS = MEASURE_JS.replace("FONT_WAIT_MS", str(FONT_WAIT_MS)).replace("LOAD_WAIT_MS", str(LOAD_WAIT_MS))
+
+# An external stylesheet blocks every later script until it arrives; offline, that is never.
+# In the measuring copy it loads without blocking (the page itself is unchanged).
+REMOTE_CSS = re.compile(r'<link\b(?=[^>]*\brel=["\']?stylesheet)(?=[^>]*\bhref=["\']?(?:https?:)?//)[^>]*?/?>', re.I)
 
 RECORD = re.compile(r'<script type="application/json" id="jd-layout">(.*?)</script>', re.S)
 
@@ -162,6 +176,8 @@ def report(measurements):
             if sec["overlap"]:
                 items.append("overlap %s: %s" % (size, ", ".join("%s × %s" % tuple(p) for p in sec["overlap"])))
     lines = ["%s  %s" % (sid, "; ".join(items) if items else "ok") for sid, items in found.items()]
+    if any(data.get("fonts", "loaded") != "loaded" for _, data in measurements):
+        lines.append("note: a web font or an external stylesheet did not load; measured with the fallback font")
     bad = [sid for sid, items in found.items() if items]
     sizes = " and ".join(size for size, _ in measurements)
     if bad:
@@ -175,7 +191,7 @@ def render(browser, url, window, profile):
     """The record of one headless render with the window at `window` (w, h)."""
     argv = [browser, "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
             "--hide-scrollbars", "--user-data-dir=" + profile, "--window-size=%d,%d" % window,
-            "--virtual-time-budget=10000", "--dump-dom", url]
+            "--virtual-time-budget=10000", "--timeout=%d" % STOP_MS, "--dump-dom", url]
     if hasattr(os, "geteuid") and os.geteuid() == 0:
         argv.insert(1, "--no-sandbox")
     try:
@@ -214,7 +230,8 @@ def wsl_windows_temp():
 
 
 def check(page, browser):
-    html = page.read_text(encoding="utf-8")
+    html = REMOTE_CSS.sub(lambda m: m.group(0)[:-1].rstrip("/") + ' data-jd-remote media="print" onload="this.media=\'all\'">',
+                          page.read_text(encoding="utf-8"))
     at = html.lower().rfind("</body>")
     html = html[:at] + MEASURE_JS + html[at:] if at >= 0 else html + MEASURE_JS
     fd, copy = tempfile.mkstemp(prefix="." + page.stem + ".check-", suffix=".html", dir=str(page.parent))
