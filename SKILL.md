@@ -68,6 +68,14 @@ it:
 A BRIEF at `design` or later skips grilling (D6). Moving `phase` follows
 "Who changes `phase`" in `reference/brief-template.md`, at every phase.
 
+### 4. Suggest one session break
+
+When `phase` moves from `design` to `build`, send this line once, after the
+BRIEF.md edit: "새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요".
+It is a suggestion; continue if the student goes on here. Never repeat it
+(D27). Every turn re-reads the whole conversation, so build and revise cost
+less without the grill and design rounds in it.
+
 ## Dependencies
 
 Each dependency is optional (D15). Detect it when a phase first needs it.
@@ -81,12 +89,13 @@ the phase; the fallback is complete.
 | `claude-mem` (grill) | A `claude-mem:mem-search` skill or an `mcp__plugin_claude-mem_*` search tool is available | Silently skip it as a context source |
 | `gh` (grill, publish) | `gh auth status` succeeds | Public REST API for a public repo, no Project board (`reference/grill.md`); ask for the Pages source folder (`reference/publish.md`) |
 | Revise server (revise) | `scripts/serve.py` starts and the student's browser reaches its address | File export and `scripts/pull_edits.py`: "Fallback: no server" in `reference/revise.md` |
+| Headless browser (build, revise) | `scripts/check_layout.py` does not exit 3 (it finds Chrome, Chromium, or Edge) | Skip the layout check; the student preview is the check |
 | `Monitor` tool (revise) | The session's tool list has `Monitor` | The student tells you after each save |
 | Pages target (publish) | The student says yes to a GitHub Pages deploy, and `pages_repo` in local.md is not empty after the setup step | Stop after a finished local HTML and print its path. A `pages_repo` that is set but has no `.git` is an error, not the fallback: `scripts/publish.py copy` stops and names `pages_repo`. Ask the student to fix the path |
 
 ## Verification state
 
-As of 2026-10-15: every phase is an unverified draft after the revision
+As of 2026-10-25: every phase is an unverified draft after the revisions
 (D19). The phase files pass their contract tests in `tests/` only. No phase
 has been verified on a real presentation yet.
 

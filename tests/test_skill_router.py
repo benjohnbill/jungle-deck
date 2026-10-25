@@ -124,6 +124,7 @@ FALLBACKS = {
     "Revise server": "scripts/pull_edits.py",
     "Monitor": "tells you after each save",
     "Pages": "local HTML",
+    "Headless browser": "student preview",
 }
 
 
@@ -140,6 +141,18 @@ def table_rows(text):
         if line.startswith("|") and not re.match(r"^\|[-| ]+\|$", line):
             rows.append([c.strip() for c in line.strip("|").split("|")])
     return rows[1:]  # drop the header row
+
+
+class SessionBreakTest(unittest.TestCase):
+    """D27: one suggested new session, at design -> build."""
+
+    def test_one_suggestion_at_design_to_build(self):
+        _, body = split_front_matter(SKILL.read_text())
+        text = section(body, "Steps")
+        self.assertIn("새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요", text)
+        self.assertRegex(text, r"`design` to `build`")
+        self.assertRegex(text, r"(?i)once")
+        self.assertEqual(text.count("새 세션에서"), 1)
 
 
 class DependencyTest(unittest.TestCase):

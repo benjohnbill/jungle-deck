@@ -22,6 +22,7 @@ Optional. Each one has a built-in fallback, so the skill works without it:
 | `grilling` skill | Runs the `grill` questions | Built-in question rounds |
 | `gh`, logged in | Reads issues, PRs, and the Project board; finds the Pages source folder | Public repos only, through the GitHub REST API; no Project board; the skill asks for the Pages folder |
 | `claude-mem` | One more context source in `grill` | Skipped |
+| Chrome, Chromium, or Edge | The layout check in `build` and `revise` | Skipped; you check the page yourself |
 
 ## Install
 
@@ -56,16 +57,19 @@ phrases "발표 덱" and "덱 게시" still work.
 
 ## Workflow
 
-Each phase ends only when you confirm it. The skill proposes 1–3 candidates
-and recommends one; what it records is your pick or your rewrite.
+Each phase ends only when you confirm it. You lead: the skill starts from
+your idea and your draft, and proposes candidates only inside your draft or
+for a slot you left open. What it records is your pick or your rewrite.
 
 ### grill — the content
 
 | The skill does or asks | You decide |
 |---|---|
-| Reads your own commits, your study notes, GitHub issues and PRs, and `claude-mem` (no questions yet) | — |
+| "이번 주에 발표하고 싶은 아이템이나, 대략 생각해 둔 흐름이 있어요?" (nothing is read yet) | Your item and flow, or "없어요" |
+| With "없어요": three questions about your week (most time, hardest part, what you wanted to learn), then "2분 동안 사람들에게 보여 주고 싶은 것은 뭐예요?" with candidates from your answers | The topic |
+| Reads only what bears on your topic: your commits, study notes, GitHub issues and PRs, `claude-mem` | — |
 | Shows what it found and could not read; "이 로컬 저장소를 기준으로 보면 될까요?"; offers the team log | The source repo, more sources, anything else it should know |
-| Candidates for the topic, your motive, the one takeaway line, the slide count (about 6 ± 2) | Each of the four |
+| Your motive, the one takeaway line, the slide count (about 6 ± 2), only those still open | Each of them |
 | Story structure (오프닝 → 도입 → 전개 → 전환 → 마무리, or 증상 → 증거 → 원인) and the opening | Structure and opening |
 | The title slide (the point, first) and the closing line | Both lines |
 | One thesis sentence per slide | Each thesis |
@@ -83,6 +87,7 @@ and recommends one; what it records is your pick or your rewrite.
 | Two or three previews in `previews/` | One preview |
 | The accent with the DESIGN.md key it came from: "강조색은 `<color>`이고, DESIGN.md의 `<key>`에서 가져왔어요. 이 색으로 갈까요, 다른 색을 고를까요?" | Keep it or pick another; the first time, also whether to keep it for next time |
 | "이 디자인으로 발표 자료를 만들까요?" | Move on to `build` |
+| Once: "새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요" | Start a new session, or go on here |
 
 ### build — the first draft
 
@@ -90,8 +95,9 @@ and recommends one; what it records is your pick or your rewrite.
 |---|---|
 | Writes `<slug>.html` from the template, your content, and your style; copies images into `<slug>.assets/` | — |
 | Puts your script (or light notes) into the speaker notes | — |
+| Runs `scripts/check_layout.py` once for overflow and overlap (skipped with no Chrome, Chromium, or Edge) | — |
 | Starts a local server and gives you `http://127.0.0.1:<port>/<slug>.html` | — |
-| Asks you to check the first draft | Move on to `revise` |
+| Asks you to look through the first draft in the browser | What to change, or move on to `revise` |
 
 Keys in the page: `→` next, `N` notes, `E` edit, `Ctrl+S` save, `?` all
 shortcuts. While editing, `Tab` opens the size buttons for the text you

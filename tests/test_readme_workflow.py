@@ -51,6 +51,15 @@ class WorkflowTest(unittest.TestCase):
         self.assertNotIn(-1, order, order)
         self.assertEqual(order, sorted(order))
 
+    def test_grill_asks_first_and_build_checks_once(self):
+        # D7, D8, D9 (2026-10-25): the student leads; one layout check.
+        grill = section(self.workflow, "grill", "###")
+        rows = table_rows(grill)
+        self.assertIn("이번 주에 발표하고 싶은 아이템", rows[0])
+        self.assertNotRegex(rows[0], r"(?i)reads your own commits")
+        self.assertIn("scripts/check_layout.py", section(self.workflow, "build", "###"))
+        self.assertIn("새 세션", section(self.workflow, "design", "###"))
+
     def test_keys_name_the_size_buttons(self):
         # #31: in edit mode, Tab opens the size buttons.
         keys = flat_text(self.workflow[self.workflow.index("Keys in the page"):])
