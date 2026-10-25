@@ -88,7 +88,7 @@ for a slot you left open. What it records is your pick or your rewrite.
 | Two or three previews in `previews/` | One preview |
 | The accent with the DESIGN.md key it came from: "강조색은 `<color>`이고, DESIGN.md의 `<key>`에서 가져왔어요. 이 색으로 갈까요, 다른 색을 고를까요?" | Keep it or pick another; the first time, also whether to keep it for next time |
 | "이 디자인으로 발표 자료를 만들까요?" | Move on to `build` |
-| Once: "새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요" | Start a new session, or go on here |
+| Once, then waits: "새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요. 여기서 계속하려면 '계속'이라고 해 주세요." | Start a new session, or say "계속" |
 
 ### build — the first draft
 

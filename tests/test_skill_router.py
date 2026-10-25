@@ -164,6 +164,8 @@ class SessionBreakTest(unittest.TestCase):
         self.assertRegex(text, r"`design` to `build`")
         self.assertRegex(text, r"(?i)once")
         self.assertEqual(text.count("새 세션에서"), 1)
+        # Run A (2026-10-26): the line came, then build started in the same turn.
+        self.assertRegex(" ".join(text.split()), r"(?i)end your turn")
 
 
 class DependencyTest(unittest.TestCase):
