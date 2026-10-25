@@ -19,6 +19,7 @@ USAGE_KEYS = ("input_tokens", "output_tokens",
               "cache_creation_input_tokens", "cache_read_input_tokens")
 SESSION_BREAK = "새 세션에서 'jungle-deck 이어서'"
 SCREENSHOT_TOOL = re.compile(r"--screenshot|screenshot|cdp\.m?js|puppeteer|playwright", re.I)
+OWN_FILE = re.compile(r"skills/jungle-deck/|jungle-deck/(reference|templates|scripts|vendor|SKILL\.md)|jungle-deck\.local\.md|BRIEF\.md")
 CONTEXT_BASH = re.compile(r"\bgit (-C \S+ )?(log|show|diff|blame)\b|\bgh (issue|pr|api|project|repo)\b|curl .*github|\bcat |\bsed -n|\brg |\bgrep ")
 
 
@@ -44,11 +45,18 @@ def is_context_read(name, inp, blob):
     """A read of the student's material, not of the skill, BRIEF.md, or local.md."""
     if name in ("Agent", "Task", "WebFetch", "WebSearch") or name.startswith("mcp__plugin_claude-mem"):
         return True
-    if "jungle-deck" in blob and not re.search(r"\bgit\b|\bgh\b", blob):
-        return False
     if name in ("Read", "Grep", "Glob"):
-        return "BRIEF.md" not in blob
-    return name == "Bash" and bool(CONTEXT_BASH.search(inp.get("command", "")))
+        return not OWN_FILE.search(blob)
+    if name != "Bash":
+        return False
+    in_skill = False
+    for part in re.split(r"&&|\|\||;|\||\n", inp.get("command", "")):
+        cd = re.match(r"\s*cd\s+(\S+)", part)
+        if cd:
+            in_skill = bool(OWN_FILE.search(cd.group(1) + "/"))
+        elif CONTEXT_BASH.search(part) and not in_skill and not OWN_FILE.search(part):
+            return True
+    return False
 
 
 def is_skill_start(text):

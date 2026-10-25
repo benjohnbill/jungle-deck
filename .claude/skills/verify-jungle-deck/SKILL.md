@@ -49,11 +49,11 @@ python3 tools/verify/jdv.py turn <run> "<student message>"          # same sessi
 python3 tools/verify/jdv.py turn <run> "<student message>" --new    # new session
 ```
 
-It runs `claude -p` in `<run>/week09` with `--plugin-dir <run>/plugin` (also
-`--add-dir`, so the skill can write its `jungle-deck.local.md`),
-`--permission-mode acceptEdits`, and tools `Bash Read Write Edit Glob Grep Skill`
-plus the claude-mem search tools,
-resumes the last session, prints the reply, and appends the turn to
+It runs `claude -p` in `<run>/week09` with `--plugin-dir <run>/plugin`,
+`--permission-mode acceptEdits`, the allowed tools `Bash Read Write Edit Glob Grep Skill`,
+and nothing else: MCP tools (connectors, the user's browser) are listed but not
+allowed, so `-p` refuses every call to them; never add one to the allowed list.
+It resumes the last session, prints the reply, and appends the turn to
 `<run>/state.json`.
 
 Play the student from the persona card in the feature file. Rules for you:
@@ -68,6 +68,13 @@ Play the student from the persona card in the feature file. Rules for you:
   `turn ... "/jdv:jungle-deck jungle-deck 이어서" --new`.
 - Cap each feature at the turn limit in its file. A run that hits the cap is
   a finding, not a pass.
+
+Known limit: Claude Code treats `*.local.md` as a sensitive file, so in `-p`
+mode the skill's writes to `jungle-deck.local.md` (`current_brief`, `accent`)
+are refused, and the skill says so in its reply. Resume still works by the
+subfolder search. Do not switch to `bypassPermissions` to get past it: that
+mode with a live agent is refused, and it would open every tool. claude-mem
+is refused the same way, so the skill skips that source (D15).
 
 ## Evidence
 

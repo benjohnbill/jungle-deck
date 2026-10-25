@@ -130,9 +130,8 @@ def transcript_of(repo, session):
 
 def turn(run_dir, message, new):
     state = load(run_dir)
-    argv = ["claude", "-p", message, "--plugin-dir", state["plugin"], "--add-dir", state["plugin"],
-            "--output-format", "json",
-            "--permission-mode", "acceptEdits", "--allowedTools", TOOLS]
+    argv = ["claude", "-p", message, "--plugin-dir", state["plugin"], "--output-format", "json",
+            "--permission-mode", "bypassPermissions", "--tools", TOOLS]
     if state["sessions"] and not new:
         argv += ["--resume", state["sessions"][-1]]
     p = subprocess.run(argv, cwd=state["repo"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
