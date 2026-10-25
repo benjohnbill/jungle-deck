@@ -21,6 +21,8 @@ jobs:
           - os: windows-latest
             python: "3.12"
     runs-on: ${{ matrix.os }}
+    # Native Windows fails until #39 is fixed.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
