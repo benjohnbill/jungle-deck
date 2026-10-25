@@ -34,7 +34,7 @@ import measure_run  # noqa: E402
 PLUGIN = "jdv"
 STUDENT = ("홍길동", "student@example.com")
 TEAMMATE = ("김팀원", "teammate@example.com")
-TOOLS = "Bash Read Write Edit Glob Grep Skill mcp__plugin_claude-mem_mcp-search"
+TOOLS = "Bash Read Write Edit Glob Grep Skill"
 LOCAL_MD = """---
 display_name: "홍길동"
 notes_url: ""
@@ -134,7 +134,7 @@ def transcript_of(repo, session):
 def turn(run_dir, message, new):
     state = load(run_dir)
     argv = ["claude", "-p", message, "--plugin-dir", state["plugin"], "--output-format", "json",
-            "--permission-mode", "bypassPermissions", "--tools", TOOLS]
+            "--permission-mode", "acceptEdits", "--allowedTools", TOOLS]
     if state["sessions"] and not new:
         argv += ["--resume", state["sessions"][-1]]
     env = dict(os.environ, JUNGLE_DECK_CONFIG=str(Path(run_dir).resolve() / "jungle-deck.local.md"))
