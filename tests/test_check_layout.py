@@ -107,6 +107,11 @@ class FindBrowser(unittest.TestCase):
         edge = str(PureWindowsPath(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"))
         self.assertEqual(check_layout.find_browser("Windows", env, lambda p: p == edge, lambda n: None), edge)
 
+    def test_wsl_without_a_linux_browser_finds_windows_edge(self):
+        edge = "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+        self.assertEqual(check_layout.find_browser("Linux", {}, lambda p: p == edge, lambda n: None, wsl=True), edge)
+        self.assertIsNone(check_layout.find_browser("Linux", {}, lambda p: p == edge, lambda n: None, wsl=False))
+
     def test_none_when_nothing_is_installed(self):
         for system in ("Linux", "Darwin", "Windows"):
             self.assertIsNone(check_layout.find_browser(system, {"PROGRAMFILES": r"C:\Program Files"},
@@ -151,6 +156,21 @@ TAKEAWAY = '<p class="hint">덧붙일 근거나 조건 한 줄</p>'
 TITLE = '<h1>발표 제목을 <em>한 줄</em>로</h1>'
 LONG = "".join("<p>넘치는 줄 %d: 이 슬라이드에는 글이 너무 많아서 상자를 넘어간다</p>\n" % i for i in range(40))
 COVER = '<svg style="position:absolute;inset:0;width:100%;height:100%"></svg>'
+
+
+WSL_EDGE = "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+
+
+@unittest.skipUnless(check_layout.is_wsl() and os.path.isfile(WSL_EDGE), "not WSL with Windows Edge")
+class WindowsBrowserFromWsl(unittest.TestCase):
+    def test_windows_edge_measures_a_page_in_the_wsl_filesystem(self):
+        with tempfile.TemporaryDirectory() as d:
+            page = Path(d) / "deck.html"
+            page.write_text(page_with((TAKEAWAY, TAKEAWAY + LONG)), encoding="utf-8")
+            code, out, err = run_main([str(page), "--browser", WSL_EDGE])
+            self.assertEqual(os.listdir(d), ["deck.html"], "the measuring copy is removed")
+        self.assertEqual(code, 1, out + err)
+        self.assertTrue(out.splitlines()[2].startswith("s3  overflow"), out)
 
 
 @unittest.skipUnless(BROWSER, "no Chromium-family browser")

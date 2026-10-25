@@ -38,6 +38,7 @@ MAC_APPS = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 WIN_ROOTS = ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA")
 WIN_EXES = (r"Google\Chrome\Application\chrome.exe", r"Microsoft\Edge\Application\msedge.exe",
             r"Chromium\Application\chrome.exe")
+WSL_ROOTS = ("/mnt/c/Program Files", "/mnt/c/Program Files (x86)")
 
 MEASURE_JS = r"""<script>
 (() => {
@@ -93,9 +94,19 @@ class LayoutError(Exception):
     pass
 
 
-def find_browser(system=None, env=None, is_file=os.path.isfile, which=shutil.which):
-    """Path of a Chromium-family browser, or None. Firefox cannot dump the DOM after scripts run."""
+def is_wsl():
+    try:
+        with open("/proc/sys/kernel/osrelease") as f:
+            return "microsoft" in f.read().lower()
+    except OSError:
+        return False
+
+
+def find_browser(system=None, env=None, is_file=os.path.isfile, which=shutil.which, wsl=None):
+    """Path of a Chromium-family browser, or None. Firefox cannot dump the DOM after scripts run.
+    On WSL with no Linux browser, the Windows one: Edge ships with every Windows."""
     system = system or platform.system()
+    wsl = is_wsl() if wsl is None else wsl
     env = os.environ if env is None else env
     for name in PATH_NAMES:
         found = which(name)
@@ -105,6 +116,8 @@ def find_browser(system=None, env=None, is_file=os.path.isfile, which=shutil.whi
         candidates = list(MAC_APPS) + [str(Path.home()) + app for app in MAC_APPS]
     elif system == "Windows":
         candidates = [str(PureWindowsPath(env[root], exe)) for root in WIN_ROOTS if env.get(root) for exe in WIN_EXES]
+    elif wsl:
+        candidates = [root + "/" + exe.replace("\\", "/") for root in WSL_ROOTS for exe in WIN_EXES]
     else:
         candidates = []
     return next((c for c in candidates if is_file(c)), None)
@@ -170,17 +183,35 @@ def measure_at(browser, url, size, profile):
     return data
 
 
+def wsl_windows_path(path):
+    out = subprocess.run(["wslpath", "-w", str(path)], stdout=subprocess.PIPE, encoding="utf-8", check=True)
+    return out.stdout.strip()
+
+
+def wsl_windows_temp():
+    """A WSL path to the Windows %TEMP%: a Windows browser keeps its profile there."""
+    out = subprocess.run(["cmd.exe", "/c", "echo %TEMP%"], stdout=subprocess.PIPE,
+                         stderr=subprocess.DEVNULL, encoding="utf-8", errors="replace", cwd="/mnt/c")
+    unix = subprocess.run(["wslpath", "-u", out.stdout.strip()], stdout=subprocess.PIPE, encoding="utf-8")
+    return unix.stdout.strip() or None
+
+
 def check(page, browser):
     html = page.read_text(encoding="utf-8")
     at = html.lower().rfind("</body>")
     html = html[:at] + MEASURE_JS + html[at:] if at >= 0 else html + MEASURE_JS
     fd, copy = tempfile.mkstemp(prefix="." + page.stem + ".check-", suffix=".html", dir=str(page.parent))
-    profile = tempfile.mkdtemp(prefix="jd-check-")
+    windows_browser = browser.lower().endswith(".exe") and platform.system() != "Windows"
+    profile = tempfile.mkdtemp(prefix="jd-check-", dir=wsl_windows_temp() if windows_browser else None)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(html)
-        url = Path(copy).resolve().as_uri()
-        return [("%dx%d" % size, measure_at(browser, url, size, profile)) for size in SIZES]
+        if windows_browser:
+            url = PureWindowsPath(wsl_windows_path(Path(copy).resolve())).as_uri()
+            browser_profile = wsl_windows_path(profile)
+        else:
+            url, browser_profile = Path(copy).resolve().as_uri(), profile
+        return [("%dx%d" % size, measure_at(browser, url, size, browser_profile)) for size in SIZES]
     finally:
         os.remove(copy)
         shutil.rmtree(profile, ignore_errors=True)

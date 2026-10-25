@@ -22,7 +22,7 @@ Optional. Each one has a built-in fallback, so the skill works without it:
 | `grilling` skill | Runs the `grill` questions | Built-in question rounds |
 | `gh`, logged in | Reads issues, PRs, and the Project board; finds the Pages source folder | Public repos only, through the GitHub REST API; no Project board; the skill asks for the Pages folder |
 | `claude-mem` | One more context source in `grill` | Skipped |
-| Chrome, Chromium, or Edge | The layout check in `build` and `revise` | Skipped; you check the page yourself |
+| Chrome, Chromium, or Edge (on WSL, the Windows Edge or Chrome also works) | The layout check in `build` and `revise` | Skipped; you check the page yourself |
 
 ## Install
 
