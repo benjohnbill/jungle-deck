@@ -15,6 +15,7 @@ The agent owns the layout and the evidence.
 
 ## Rules
 
+- **Who changes what.** The server path is the default (D11). Text and position edits are the student's: in edit mode (`E`, then `Ctrl+S`). You make structural changes (add, split, reorder, or delete a slide) and evidence changes. While the server works, do not ask the student for screenshots of the page: read `.serve.log`, the diff, and the `check_layout.py` report.
 - Do not overwrite the student's wording. After a save, the student's text is the source of truth. Change layout, size, steps, and evidence around it. If a layout fix needs other words, propose them under the proposal rule (`reference/grill.md`) and use the student's pick.
 - The student's size steps are the student's choice, like their words: the classes `jd-t-*` (text size) and `jd-w-*` (box width) that the page's size toolbar sets. Keep them in your layout pass. When a slide cannot fit with them, propose a change under the proposal rule and use the student's pick.
 - Keep every `<section id>` stable. Every save matches sections by id.
@@ -54,7 +55,7 @@ One pass is one round.
    - A longer thesis or note: change the layout or the size token, not the text and not the student's size steps (Rules).
    - A slide that now goes over the density limits in `reference/build.md`: split it, or cut log lines. The thesis of a new slide follows the proposal rule (`reference/grill.md`).
    - New evidence that the student asks for: take it only from real runs saved in `evidence/`. Re-run the command in `source_repo` if the log is missing. Never invent output.
-   - Check the render again at 1280×720 and 1920×1080, as in `reference/build.md`.
+   - After a layout change, run `scripts/check_layout.py` once, as in "Check the render" of `reference/build.md`.
 7. **Record.** Add one row to the `Revise` table of `BRIEF.md`: the round, the date, and what changed. Write the notable changes only: a new or split slide, a changed thesis, new evidence, a layout fix. Set `updated` and rewrite `Next action`.
 8. **Hand back.** Tell the student the page is ready. When you changed the page, it shows "에이전트가 수정했어요 — R로 새로고침" within a few seconds. `R` reloads and keeps the slide number.
 

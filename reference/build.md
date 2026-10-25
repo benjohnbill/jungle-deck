@@ -88,14 +88,17 @@ The page shows on a large monitor in a bright room. Every slide must fit the scr
 
 ## Check the render
 
-Open the page in a browser and check every slide, every step, at two sizes:
+Run the layout check once, from the skill directory:
 
-1. 1280×720
-2. 1920×1080
+```
+<python_cmd> scripts/check_layout.py <save folder>/<slug>.html
+```
 
-At each size, look for these faults: text cut off at an edge, a panel taller than the slide, overlapping elements, a step that never shows, an image that does not load. Also open the notes with `N` and check that each slide has notes.
+It renders every slide with every step shown, at 1280×720 and 1920×1080, and prints one line per section: `ok`, or the overflow and overlap it found. Exit 0: every section fits. Exit 1: fix each listed section (split it, or cut log lines, as in "Viewport and density"), then run it once more. Exit 2: read the error line. Exit code 3 means no headless browser (Chrome, Chromium, or Edge) was found: skip the check (D15).
 
-Fix each fault in the page, then check again. Write any fault you cannot fix into `Open issues for revise` in the `Build` section of `BRIEF.md`.
+Do not write a screenshot tool of your own, and do not run a screenshot-and-fix loop. The script cannot judge looks, a step that never shows, or an image that does not load: the student opens the page and gives that feedback (Finish, step 4).
+
+Write any fault you cannot fix into `Open issues for revise` in the `Build` section of `BRIEF.md`.
 
 ## Finish
 
@@ -105,6 +108,6 @@ Fix each fault in the page, then check again. Write any fault you cannot fix int
    1. How to open: the server address `http://127.0.0.1:<port>/<slug>.html`.
    2. The keys: `→` next, `N` notes, `E` edit, `Ctrl+S` save, `?` all shortcuts.
    3. After an edit: "고친 뒤 저장하고 에이전트에게 말해 주세요".
-4. Ask the student to confirm the first draft. Wait for the answer.
+4. Ask the student to look through the first draft in the browser and say what to change, or confirm it. Wait for the answer.
 5. Move `phase` to `revise` only when the student confirms the draft. A rendered page is not enough. In the same edit, set `updated` and rewrite `Next action`. Example: "Student edits and saves in the browser, then says 저장했어; read the last line of .serve.log."
 6. Then read `reference/revise.md`.

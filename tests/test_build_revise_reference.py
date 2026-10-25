@@ -157,6 +157,16 @@ class BuildReferenceTest(PathsExist, unittest.TestCase):
         self.assertRegex(text, r"(?i)density")
         self.assertRegex(text, r"(?i)never scroll")
 
+    def test_render_check_is_one_script_run_then_the_student(self):
+        # D9: one shipped check, no agent-made screenshot loop, student preview.
+        body = flat(section(self.text, "Check the render"))
+        self.assertIn("scripts/check_layout.py", body)
+        self.assertRegex(body, r"(?i)once")
+        self.assertRegex(body, r"(?i)exit code 3|exits 3")
+        self.assertRegex(body, r"(?i)do not write (a|your own) screenshot")
+        self.assertRegex(body, r"(?i)student (opens|previews)")
+        self.assertNotRegex(body, r"(?i)then check again")
+
     def test_split_uses_proposal_rule(self):
         # D7: the agent proposes the new thesis; the student picks or rewrites.
         text = flat(self.text)
@@ -182,6 +192,15 @@ class ReviseReferenceTest(PathsExist, unittest.TestCase):
     def setUp(self):
         self.text = REVISE.read_text(encoding="utf-8")
         self.stage = STAGE.read_text(encoding="utf-8")
+
+    def test_server_first_split_of_work(self):
+        # D11: text and position edits are the student's; no screenshot asks.
+        rules = flat(section(self.text, "Rules"))
+        self.assertRegex(rules, r"(?i)text and position edits are the student's")
+        self.assertRegex(rules, r"(?i)structural changes")
+        self.assertRegex(rules, r"(?i)do not ask (the student )?for screenshots")
+        loop = flat(section(self.text, "The loop"))
+        self.assertIn("scripts/check_layout.py", loop)
 
     def test_starts_or_reuses_the_server(self):
         body = flat(section(self.text, "Start the server"))
