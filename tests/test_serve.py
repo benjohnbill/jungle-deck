@@ -36,7 +36,7 @@ class Served(unittest.TestCase):
         self.folder = Path(tmp.name) / SLUG
         self.folder.mkdir()
         self.deck = self.folder / f"{SLUG}.html"
-        self.deck.write_text(STAGE, encoding="utf-8")
+        self.deck.write_bytes(STAGE.encode("utf-8"))  # LF on every OS
         (self.folder / "BRIEF.md").write_text("---\nkind: jungle-deck\n---\n", encoding="utf-8")
         (self.folder / "evidence").mkdir()
         (self.folder / "evidence" / "run.txt").write_text("token=abc\n", encoding="utf-8")
@@ -221,7 +221,7 @@ class ThreeWaySaveTest(Saving):
         self.assertTrue(list((self.folder / "_backup").glob(f"{SLUG}.*.html")))
 
     def test_snapshot_is_seeded_at_startup(self):
-        startup = serve.content_hash(self.deck.read_text(encoding="utf-8"))
+        startup = serve.content_hash(self.deck.read_bytes().decode("utf-8"))
         status, _ = self.save({"s2": self.edited("s2", "한 가지", "두 가지")}, base_hash=startup)
         self.assertEqual(status, 200)
 

@@ -52,7 +52,7 @@ class Workspace(unittest.TestCase):
         self.tmp = Path(tmp.name)
         self.deck = self.tmp / "study" / "sample-deck.html"
         self.deck.parent.mkdir()
-        self.deck.write_text(STAGE, encoding="utf-8")
+        self.deck.write_bytes(STAGE.encode("utf-8"))  # LF on every OS
         self.downloads = self.tmp / "Downloads"
         self.downloads.mkdir()
 
