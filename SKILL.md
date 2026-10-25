@@ -25,8 +25,10 @@ answer them in the new words.
 
 ### 1. Load the personal settings
 
-Read `jungle-deck.local.md` in the skill directory. When
-`jungle-deck.local.md` is missing, this is the first run: run the Python
+Read `jungle-deck.local.md` at `$JUNGLE_DECK_CONFIG`, else
+`~/.config/jungle-deck/jungle-deck.local.md` (see "Location" in
+`reference/local-template.md`, which also moves an old copy from the skill
+folder). When `jungle-deck.local.md` is missing, this is the first run: run the Python
 check, then ask the first-run questions, both in
 `reference/local-template.md`, then write the file from its template.
 Run the Python check also when `python_cmd` is empty or fails. An older

@@ -15,6 +15,7 @@ This script never runs git. Settings come from jungle-deck.local.md
 """
 
 import argparse
+import os
 import re
 import sys
 import time
@@ -35,6 +36,17 @@ CARD = re.compile(rb'<\w+\b(?=[^>]*\bclass="(?:[^"]*\s)?card[\s"])(?=[^>]*\bdata
 
 class Fail(Exception):
     """A one-line reason to exit non-zero."""
+
+
+def settings_path(skill_root=SKILL_ROOT):
+    """$JUNGLE_DECK_CONFIG, else ~/.config/jungle-deck/jungle-deck.local.md. Not in the skill
+    directory: under ~/.claude, Claude Code asks before every edit. An old file there is read
+    until the agent copies it over (reference/local-template.md, "Location")."""
+    if os.environ.get("JUNGLE_DECK_CONFIG"):
+        return Path(os.environ["JUNGLE_DECK_CONFIG"]).expanduser()
+    new = Path.home() / ".config" / "jungle-deck" / "jungle-deck.local.md"
+    old = Path(skill_root) / "jungle-deck.local.md"
+    return old if old.is_file() and not new.is_file() else new
 
 
 def load_settings(path):
@@ -236,8 +248,9 @@ def parse_args(argv):
         s.add_argument("--week", type=int,
                        help="week number, e.g. 6 or 06 (omit when the week is unknown)")
         s.add_argument("--slug", help="deck slug (default: deck file name without .html)")
-        s.add_argument("--local", default=str(SKILL_ROOT / "jungle-deck.local.md"),
-                       help="settings file (default: jungle-deck.local.md in the skill root)")
+        s.add_argument("--local", default=str(settings_path()),
+                       help="settings file (default: $JUNGLE_DECK_CONFIG, else "
+                            "~/.config/jungle-deck/jungle-deck.local.md)")
         if name == "copy":
             s.add_argument("--replace", action="store_true",
                            help="overwrite an earlier copy of this presentation (a republish)")

@@ -21,8 +21,8 @@ Stage one run directory per revision under your scratchpad:
 python3 tools/verify/jdv.py stage <scratch>/runs/<feature>-<rev> <rev>
 ```
 
-It writes `plugin/` (the skill at `<rev>` as the plugin `jdv`, with its own
-`jungle-deck.local.md`) and `week09/` (a synthetic student repo: three commits
+It writes `plugin/` (the skill at `<rev>` as the plugin `jdv`), the run's
+`jungle-deck.local.md`, and `week09/` (a synthetic student repo: three commits
 by the student `student@example.com`, one by a teammate, notes, and
 `run_tests.py`). Ready when it prints `staged ...`. A staged directory is
 never reused: stage a fresh one per run.
@@ -69,12 +69,14 @@ Play the student from the persona card in the feature file. Rules for you:
 - Cap each feature at the turn limit in its file. A run that hits the cap is
   a finding, not a pass.
 
-Known limit: Claude Code treats `*.local.md` as a sensitive file, so in `-p`
-mode the skill's writes to `jungle-deck.local.md` (`current_brief`, `accent`)
-are refused, and the skill says so in its reply. Resume still works by the
-subfolder search. Do not switch to `bypassPermissions` to get past it: that
-mode with a live agent is refused, and it would open every tool. claude-mem
-is refused the same way, so the skill skips that source (D15).
+Settings: the run's `jungle-deck.local.md` sits in the run directory and is
+passed as `JUNGLE_DECK_CONFIG`, so the user's own settings are never read or
+written. A revision before 2026-10-26 ignores that variable and reads the copy
+in `plugin/skills/jungle-deck/`; there, Claude Code refuses its writes (a file
+under a plugin is a sensitive file), and the skill says so in its reply. Do not
+switch to `bypassPermissions` to get past it: that mode with a live agent is
+refused, and it would open every tool. claude-mem is refused like every MCP
+tool, so the skill skips that source (D15).
 
 ## Evidence
 

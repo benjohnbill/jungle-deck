@@ -31,8 +31,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import publish  # noqa: E402  (load_settings: the same local.md parser)
 from downloads_dir import detect_here as detect_downloads  # noqa: E402
 
-SKILL_ROOT = Path(__file__).resolve().parent.parent
-
 # Comments are matched first so a <section> written inside one (the
 # template's header documents the format that way) is skipped.
 SECTION = re.compile(r"<!--.*?-->|(<section\b[^>]*>)(.*?)(</section>)", re.S)
@@ -222,8 +220,9 @@ def main(argv=None):
     ap.add_argument("--write", action="store_true",
                     help="apply the changed sections to the deck (default: dry-run); "
                          "needs --export")
-    ap.add_argument("--local", type=Path, default=SKILL_ROOT / "jungle-deck.local.md",
-                    help="settings file (default: jungle-deck.local.md in the skill root)")
+    ap.add_argument("--local", type=Path, default=publish.settings_path(),
+                    help="settings file (default: $JUNGLE_DECK_CONFIG, else "
+                         "~/.config/jungle-deck/jungle-deck.local.md)")
     args = ap.parse_args(argv)
     if args.write and not args.export:
         print("pull_edits: --write needs --export FILE (the export you reviewed in the dry-run)",

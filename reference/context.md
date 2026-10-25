@@ -25,5 +25,5 @@ Source: SPEC "Shared Jungle context", from the author's own words (sessions 2026
 ## Not in this file
 
 Speaker, publishing, and style settings are personal.
-They live in `jungle-deck.local.md` in the skill directory (see `reference/local-template.md`).
+They live in `jungle-deck.local.md` under `~/.config/jungle-deck/` (see `reference/local-template.md`).
 Examples: the display name, the Pages repo and URL, the index card format, the DESIGN.md path, and the preferred accent.

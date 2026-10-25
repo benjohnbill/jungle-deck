@@ -1,21 +1,20 @@
 ---
 scope: The personal settings file jungle-deck.local.md (SPEC D16) and the first-run questions that write it
 authority: SPEC.md D15, D16, D20, D24. Key names here are a contract with scripts/publish.py and scripts/pull_edits.py; change them only together
-status: revised 2026-10-15 (D16 keys, migration); unverified draft (D19)
+status: revised 2026-10-26 (location outside ~/.claude); unverified draft (D19)
 ---
 
 # jungle-deck.local.md — template and first run
 
-`jungle-deck.local.md` holds one student's personal settings. It lives in
-the skill directory, next to `SKILL.md`. It is gitignored: never commit it,
-never copy it into a save folder or a Pages repo.
+`jungle-deck.local.md` holds one student's personal settings. It lives at
+`~/.config/jungle-deck/jungle-deck.local.md` (see "Location"). Never commit
+it, never copy it into a save folder or a Pages repo.
 
 Every student uses the same code path. The author also uses this file.
 
 ## When to read and write it
 
-1. At the start of every call, read `jungle-deck.local.md` from the skill
-   directory.
+1. At the start of every call, find the file as "Location" says, then read it.
 2. With no file, start the first run: run the Python check below, then
    ask the first-run questions, then write the file from the
    template. Do not start `grill` before the file exists.
@@ -26,6 +25,21 @@ Every student uses the same code path. The author also uses this file.
    the key is never asked again.
 5. Change a value only when the student asks, or when a phase says so (the
    "Asked or written" column).
+
+## Location
+
+1. `JUNGLE_DECK_CONFIG` set in the environment (`echo $JUNGLE_DECK_CONFIG`): that path.
+2. Else `~/.config/jungle-deck/jungle-deck.local.md`, on every OS.
+
+Not in the skill directory: the skill is installed under `~/.claude/skills/`,
+and Claude Code treats every file under `~/.claude` as a sensitive file. It
+asks before each edit there, and an allow rule does not lift that.
+
+**Moving an old file.** When the file is missing and the skill directory
+still holds `jungle-deck.local.md` (an install from before 2026-10-26),
+copy it with Bash: `mkdir -p ~/.config/jungle-deck && cp <skill dir>/jungle-deck.local.md ~/.config/jungle-deck/`.
+Tell the student once: "설정 파일을 ~/.config/jungle-deck/로 옮겼어요. 예전 파일은 지워도 돼요."
+Leave the old file; the scripts read it only while the new one is missing.
 
 ## File format
 
@@ -145,7 +159,7 @@ Fields table that is missing is asked once when it is first needed (see
 
 ## Template
 
-Write this file as `<skill dir>/jungle-deck.local.md`:
+Write this file at the path from "Location" (create the folder first):
 
 ```yaml
 ---

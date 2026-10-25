@@ -45,7 +45,8 @@ git clone https://github.com/benjohnbill/jungle-deck "$HOME\.claude\skills\jungl
 3. The skill checks Python first. Then it asks two questions: the name to
    show on the presentation, and your study-notes site. Both may be
    empty. It writes the answers and the Python command to
-   `jungle-deck.local.md` in the skill directory. This file is gitignored.
+   `~/.config/jungle-deck/jungle-deck.local.md`, outside the skill folder,
+   so saving a setting asks no permission.
    Other settings are asked later, when a phase first needs them.
 4. The skill asks "이번 주 발표 자료를 어디에 저장할까요?" (default:
    `<current directory>/<slug>/`), writes a `BRIEF.md` there, and the
@@ -133,6 +134,7 @@ picked (text size, box width). `R` reloads when the page asks for it.
 | On WSL, the Windows browser cannot open `http://127.0.0.1:<port>/...` | `localhostForwarding=false` in `.wslconfig` | Remove that line and run `wsl --shutdown`. Or tell the skill and work without the server: open the page as a file; `Ctrl+S` exports it; the skill merges the export |
 | "서버가 꺼져 있어요" in the page | The revise server stopped (for example, the Claude Code session ended) | Say "서버 다시 켜줘". Same address: press `Ctrl+S` again. New address: your unsaved edits stay on the old one; the failed save went to your downloads folder, and the skill merges it |
 | The skill does not react after you save | The `Monitor` tool is not available in this session | Say "저장했어, 봐줘" after each save. This is the normal flow |
+| Claude Code asks permission each time the skill saves a setting ("... which is a sensitive file") | An install from before 2026-10-26 keeps `jungle-deck.local.md` in the skill folder under `~/.claude`, and Claude Code asks before every edit there | Update the skill (`git pull` in the skill folder); it moves the file to `~/.config/jungle-deck/`. Until then, allow each prompt. `claude --permission-mode bypassPermissions` also removes the prompts, but it turns off every other permission check too |
 | "에이전트 수정과 겹쳐요" | You and the skill changed the same slide | Say "겹친 거 합쳐줘". Your words win |
 | "저장이 안 됐어요 (HTTP 403)" | The page was not opened at the server address | Open the address the skill gave you. The failed save was exported to your downloads folder; tell the skill |
 | "저장 안 된 편집이 있어요 — 그 뒤에 파일이 바뀌었어요" | The browser kept edits you never saved, and the file changed after them | Press "복원" |

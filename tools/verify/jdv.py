@@ -2,8 +2,10 @@
 """Drive one revision of jungle-deck in headless Claude Code sessions.
 
 Development tool for the verify-jungle-deck skill. A run directory holds:
-  plugin/   the skill at <rev>, loaded with --plugin-dir as `jdv:jungle-deck`,
-            with its own jungle-deck.local.md (the user's settings are never read)
+  plugin/   the skill at <rev>, loaded with --plugin-dir as `jdv:jungle-deck`
+  jungle-deck.local.md  the run's settings, passed as JUNGLE_DECK_CONFIG (the user's
+            settings are never read). A copy also sits in the skill folder, where a
+            revision before 2026-10-26 reads it
   week09/   a synthetic student repo with commits in the last 7 days
   state.json  the revision, the sessions, and every turn
 
@@ -98,7 +100,8 @@ def stage(run_dir, rev):
     skill.mkdir(parents=True)
     archive = subprocess.run(["git", "-C", str(REPO), "archive", rev], check=True, stdout=subprocess.PIPE).stdout
     tarfile.open(fileobj=io.BytesIO(archive)).extractall(skill)
-    (skill / "jungle-deck.local.md").write_text(LOCAL_MD, encoding="utf-8")
+    for settings in (run_dir / "jungle-deck.local.md", skill / "jungle-deck.local.md"):
+        settings.write_text(LOCAL_MD, encoding="utf-8")
     meta = run_dir / "plugin" / ".claude-plugin"
     meta.mkdir()
     (meta / "plugin.json").write_text(json.dumps(
@@ -134,7 +137,8 @@ def turn(run_dir, message, new):
             "--permission-mode", "bypassPermissions", "--tools", TOOLS]
     if state["sessions"] and not new:
         argv += ["--resume", state["sessions"][-1]]
-    p = subprocess.run(argv, cwd=state["repo"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    env = dict(os.environ, JUNGLE_DECK_CONFIG=str(Path(run_dir).resolve() / "jungle-deck.local.md"))
+    p = subprocess.run(argv, cwd=state["repo"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                        encoding="utf-8", errors="replace", timeout=1800)
     try:
         out = json.loads(p.stdout)
