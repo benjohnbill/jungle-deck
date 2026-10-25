@@ -110,9 +110,10 @@ class Server(ThreadingHTTPServer):
             if base is None:
                 conflicts = sorted(sent)
             else:
-                old = {i: m.group(2) for i, m in pull_edits.sections(base)}
+                # Line endings only (a Windows editor wrote CRLF) are no change.
+                old = {i: pull_edits.lf(m.group(2)) for i, m in pull_edits.sections(base)}
                 conflicts = sorted(i for i in sent
-                                   if i not in src or old.get(i) != src[i].group(2))
+                                   if i not in src or old.get(i) != pull_edits.lf(src[i].group(2)))
             if conflicts:
                 kept = self.reject(payload)
                 self.log(f"409 {','.join(conflicts)} payload={kept}")

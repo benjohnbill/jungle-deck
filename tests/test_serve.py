@@ -235,6 +235,19 @@ class ThreeWaySaveTest(Saving):
         self.assertIn("두 가지", text)
         self.assertIn("원인은 캐스팅 한 줄", text)
 
+    def test_a_file_rewritten_with_crlf_is_not_a_conflict(self):
+        # #39: an editor or agent on Windows writes the deck back with CRLF
+        stale = self.base()
+        text = self.deck.read_bytes().decode("utf-8")
+        self.deck.write_bytes(text.replace("원인을 한 문장으로", "원인은 캐스팅 한 줄")
+                              .replace("\n", "\r\n").encode("utf-8"))
+        status, _ = self.save({"s2": self.edited("s2", "한 가지", "두 가지")}, base_hash=stale)
+        self.assertEqual(status, 200)
+        text = self.deck.read_bytes().decode("utf-8")
+        self.assertIn("두 가지", text)
+        self.assertIn("원인은 캐스팅 한 줄", text)
+        self.assertNotIn("\n", text.replace("\r\n", ""))
+
     def test_base_current_is_true_when_the_file_held_the_base(self):
         status, body = self.save({"s2": self.edited("s2", "한 가지", "두 가지")})
         self.assertEqual(status, 200)
