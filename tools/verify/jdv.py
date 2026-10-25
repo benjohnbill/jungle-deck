@@ -19,8 +19,11 @@ import argparse
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
+import time
+import uuid
 import tarfile
 import io
 from datetime import datetime, timedelta
@@ -35,6 +38,7 @@ PLUGIN = "jdv"
 STUDENT = ("홍길동", "student@example.com")
 TEAMMATE = ("김팀원", "teammate@example.com")
 TOOLS = "Bash Read Write Edit Glob Grep Skill"
+TURN_TIMEOUT_S, SETTLE_S = 1800, 30
 LOCAL_MD = """---
 display_name: "홍길동"
 notes_url: ""
@@ -131,27 +135,62 @@ def transcript_of(repo, session):
     return str(Path.home() / ".claude" / "projects" / slug / (session + ".jsonl"))
 
 
+def last_reply(transcript):
+    """(final assistant text, seconds since the transcript last changed), or (None, age)
+    while the turn is still running. A turn is final when its last record is an assistant
+    message that stopped with `end_turn`."""
+    try:
+        rows = [json.loads(l) for l in open(transcript, encoding="utf-8") if l.strip()]
+    except OSError:
+        return None, 0.0
+    age = time.time() - os.path.getmtime(transcript)
+    msgs = [r for r in rows if r.get("type") in ("assistant", "user")]
+    m = msgs[-1].get("message", {}) if msgs else {}
+    if not msgs or msgs[-1]["type"] != "assistant" or m.get("stop_reason") != "end_turn":
+        return None, age
+    return "".join(b.get("text", "") for b in m.get("content") or [] if b.get("type") == "text"), age
+
+
 def turn(run_dir, message, new):
+    """One student turn. A background task the skill starts (the revise server) keeps
+    `claude -p` alive after the reply; once the reply is final and the transcript has been
+    still for SETTLE_S, stop the run's process group and take the reply from the transcript."""
     state = load(run_dir)
+    sid = str(uuid.uuid4()) if new or not state["sessions"] else state["sessions"][-1]
     argv = ["claude", "-p", message, "--plugin-dir", state["plugin"], "--output-format", "json",
             "--permission-mode", "acceptEdits", "--allowedTools", TOOLS]
-    if state["sessions"] and not new:
-        argv += ["--resume", state["sessions"][-1]]
+    argv += ["--session-id", sid] if new or not state["sessions"] else ["--resume", sid]
     env = dict(os.environ, JUNGLE_DECK_CONFIG=str(Path(run_dir).resolve() / "jungle-deck.local.md"))
-    p = subprocess.run(argv, cwd=state["repo"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                       encoding="utf-8", errors="replace", timeout=1800)
-    try:
-        out = json.loads(p.stdout)
-    except ValueError:
-        sys.exit("claude -p failed (%d): %s" % (p.returncode, (p.stderr or p.stdout)[-2000:]))
-    sid = out["session_id"]
-    if not state["sessions"] or new or state["sessions"][-1] != sid:
+    transcript = transcript_of(state["repo"], sid)
+    before = os.path.getsize(transcript) if os.path.exists(transcript) else 0
+    p = subprocess.Popen(argv, cwd=state["repo"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         encoding="utf-8", errors="replace", start_new_session=True)
+    start, result, cost = time.time(), None, None
+    while p.poll() is None and time.time() - start < TURN_TIMEOUT_S:
+        time.sleep(5)
+        grown = os.path.exists(transcript) and os.path.getsize(transcript) > before
+        reply, age = last_reply(transcript) if grown else (None, 0.0)
+        if reply is not None and age > SETTLE_S:
+            os.killpg(p.pid, signal.SIGTERM)
+            p.wait()
+            result = reply + "\n[jdv: background work kept claude -p alive; stopped it after the reply]"
+            break
+    if p.poll() is None:
+        os.killpg(p.pid, signal.SIGTERM)
+        sys.exit("claude -p did not finish in %d s" % TURN_TIMEOUT_S)
+    if result is None:
+        out_text, err_text = p.communicate()
+        try:
+            out = json.loads(out_text)
+        except ValueError:
+            sys.exit("claude -p failed (%d): %s" % (p.returncode, (err_text or out_text)[-2000:]))
+        result, cost = out.get("result", ""), out.get("total_cost_usd")
+    if not state["sessions"] or state["sessions"][-1] != sid:
         state["sessions"].append(sid)
-    state["turns"].append({"session": sid, "message": message, "result": out.get("result", ""),
-                           "cost_usd": out.get("total_cost_usd")})
+    state["turns"].append({"session": sid, "message": message, "result": result, "cost_usd": cost})
     save(run_dir, state)
     print("[session %s, turn %d]" % (sid, len(state["turns"])))
-    print(out.get("result", ""))
+    print(result)
 
 
 def brief_of(repo):

@@ -55,6 +55,11 @@ and nothing else: MCP tools (connectors, the user's browser) are listed but not
 allowed, so `-p` refuses every call to them; never add one to the allowed list.
 It resumes the last session, prints the reply, and appends the turn to
 `<run>/state.json`.
+A background task the skill starts (the revise server at the end of build)
+keeps `claude -p` alive after the reply. `turn` then waits until the reply is
+final and the transcript has been still for 30 s, stops the run's process
+group (the server with it), and takes the reply from the transcript; the reply
+ends with a `[jdv: ...]` line. Such a turn has no cost figure.
 
 Play the student from the persona card in the feature file. Rules for you:
 
