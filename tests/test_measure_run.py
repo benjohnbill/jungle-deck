@@ -58,6 +58,14 @@ class MeasureRunTest(unittest.TestCase):
         self.assertEqual(checks["context_reads_before_first_answer"], [])
         self.assertEqual(checks["subagents_in_grill"], ["research"])
 
+    def test_a_skill_path_in_a_shell_variable_is_the_skill(self):
+        own = "S=/x/plugin/skills/jungle-deck; cat $S/reference/context.md"
+        piped = "S=/x/plugin/skills/jungle-deck; sed -n 1,9p $S/reference/x.md | grep -n migration"
+        self.assertFalse(measure_run.is_context_read("Bash", {"command": piped}, piped))
+        theirs = "S=/x/plugin/skills/jungle-deck; cd /r; git log --stat"
+        self.assertFalse(measure_run.is_context_read("Bash", {"command": own}, own))
+        self.assertTrue(measure_run.is_context_read("Bash", {"command": theirs}, theirs))
+
     def test_layout_runs_and_session_break_are_counted(self):
         res = self.run_on([
             START, user("네"),

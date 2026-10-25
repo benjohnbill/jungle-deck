@@ -49,12 +49,18 @@ def is_context_read(name, inp, blob):
         return not OWN_FILE.search(blob)
     if name != "Bash":
         return False
-    in_skill = False
-    for part in re.split(r"&&|\|\||;|\||\n", inp.get("command", "")):
+    in_skill, own_vars = False, set()
+    # Only the first stage of a pipeline names files; `| grep` reads stdin.
+    for part in (c.split("|")[0] for c in re.split(r"&&|\|\||;|\n", inp.get("command", ""))):
         cd = re.match(r"\s*cd\s+(\S+)", part)
+        var = re.match(r"\s*(\w+)=(\S+)\s*$", part)
         if cd:
             in_skill = bool(OWN_FILE.search(cd.group(1) + "/"))
-        elif CONTEXT_BASH.search(part) and not in_skill and not OWN_FILE.search(part):
+        elif var:
+            if OWN_FILE.search(var.group(2) + "/"):
+                own_vars.add(var.group(1))
+        elif CONTEXT_BASH.search(part) and not in_skill and not OWN_FILE.search(part) \
+                and not any(re.search(r"\$\{?%s\b" % v, part) for v in own_vars):
             return True
     return False
 
