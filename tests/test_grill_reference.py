@@ -12,6 +12,8 @@ GRILL = ROOT / "reference" / "grill.md"
 CONTEXT = ROOT / "reference" / "context.md"
 BRIEF = ROOT / "reference" / "brief-template.md"
 
+OPENING = "이번 주에 발표하고 싶은 아이템이나, 대략 생각해 둔 흐름이 있어요?"
+
 # The grill slots, as brief-template.md spells them, in D7 round order.
 D7_SLOTS = [
     "Metadata",
@@ -45,21 +47,37 @@ class GrillReferenceTest(unittest.TestCase):
             self.assertIn(slot, body, f"D7 slot '{slot}' missing")
             positions.append(body.index(slot))
         self.assertEqual(positions, sorted(positions), "D7 slots out of order")
-        # (1) collection comes first, (9) the design question comes last.
+        # (1) the opening question, then collection, (10) the design question last.
+        self.assertLess(body.index(OPENING), body.index("Context collection"))
         self.assertLess(body.index("Context collection"), positions[0])
         self.assertGreater(body.index("이 내용으로 디자인을 정할까요?"), positions[-1])
 
     def test_metadata_round_shares_the_check_in(self):
         body = section(self.text, "Rounds")
-        for item in ["What to present", "Why", "take away", "Slide count",
-                     "맥락 기준 추천"]:
+        for item in ["Why", "take away", "Slide count"]:
             self.assertIn(item, body, f"metadata round lacks '{item}'")
         self.assertRegex(body, r"(?i)same round")
-        self.assertRegex(body, r"(?i)collect again.*re-propose")
-        self.assertRegex(body, r"before recording any metadata")
+        self.assertRegex(body, r"(?i)still open")
+        self.assertNotIn("맥락 기준 추천", self.text)
+
+    def test_opening_question_before_any_read(self):
+        body = section(self.text, "Rounds")
+        self.assertIn(OPENING, body)
+        self.assertRegex(body, r"(?i)before any context is read")
+        self.assertRegex(self.text, r"(?i)never propose another topic or another flow")
+
+    def test_meta_round_when_the_student_has_nothing(self):
+        body = section(self.text, "Rounds")
+        for line in ["시간을 가장 많이 쓴", "가장 고민한", "얻고 싶었던",
+                     "답하기 쉬운 것만 답해도 돼요",
+                     "2분 동안 사람들에게 보여 주고 싶은 것"]:
+            self.assertIn(line, body, f"meta round lacks '{line}'")
+        self.assertRegex(body, r"(?i)no recommended answer")
+        self.assertRegex(body, r"(?i)from the student's (own )?answers")
 
     def test_story_frame_two_questions(self):
         body = section(self.text, "Rounds")
+        self.assertRegex(body, r"(?i)confirm.*not asked again")
         self.assertIn("오프닝 → 도입 → 전개 → 전환 → 마무리", body)
         self.assertIn("증상 → 증거 → 원인", body)
         self.assertIn("prev_brief", body)
@@ -81,6 +99,13 @@ class GrillReferenceTest(unittest.TestCase):
         mem_line = next(l for l in body.splitlines() if "claude-mem" in l)
         self.assertRegex(mem_line, r"(?i)only (if|when) .*installed")
 
+    def test_collection_is_scoped_with_no_subagents(self):
+        body = section(self.text, "Context collection")
+        self.assertRegex(body, r"(?i)scoped to the topic")
+        self.assertRegex(body, r"(?i)no subagents")
+        self.assertRegex(body, r"(?i)only the observations that match the topic")
+        self.assertIn("이런 것도 있었는데 넣을까요?", self.text)
+
     def test_log_window_from_prev_brief_else_seven_days(self):
         body = section(self.text, "Context collection")
         self.assertRegex(body, r"(?s)`created`.*`prev_brief`")
@@ -99,12 +124,14 @@ class GrillReferenceTest(unittest.TestCase):
         body = section(self.text, "Grilling rules")
         self.assertIn("`grilling` skill", body)
         self.assertRegex(body, r"(?i)installed")
-        for term in ["design tree", "frontier", "recommended answer"]:
+        for term in ["design tree", "frontier", "recommended answer", "meta round"]:
             self.assertIn(term, body.lower(), f"fallback lacks '{term}'")
 
     def test_proposal_rule_replaces_the_thesis_ban(self):
         self.assertIn("Proposal rule", self.text)
-        self.assertRegex(self.text, r"(?i)1[–-]3 candidates or a draft")
+        self.assertRegex(self.text, r"(?i)student's draft comes first")
+        self.assertRegex(self.text, r"(?i)variations inside the student's draft")
+        self.assertRegex(self.text, r"(?i)1[–-]3 candidates")
         self.assertRegex(self.text, r"recommend one")
         self.assertRegex(self.text, r"(?i)student's pick or rewrite")
         self.assertNotRegex(self.text, r"(?i)the student writes (each|every|the) (slide )?thes")

@@ -125,13 +125,13 @@ Collect context (D8). Then run the context check-in with the metadata round.
 
 ### Context notes
 
-What context collection found, and what it could not read. Keep it short.
+What the scoped context collection found, and what it could not read. Keep it short. Collection runs after the topic is known (D8).
 
 TBD
 
 ### Metadata
 
-D7 (2). Settled in the same round as the context check-in.
+D7 (1)–(3). `What to present` comes from the opening question or the meta round. The other items are asked with the context check-in, only while still open.
 
 - What to present: TBD
 - Why: TBD
@@ -140,21 +140,21 @@ D7 (2). Settled in the same round as the context check-in.
 
 ### Story frame
 
-D7 (3). Two questions. A frame fixes no slide count.
+D7 (4). Two questions. A frame fixes no slide count. A flow the student gave in the opening answer is confirmed, not asked again.
 
 - Structure: TBD   (오프닝 → 도입 → 전개 → 전환 → 마무리, recommended; or 증상 → 증거 → 원인)
 - Opening: TBD   (common ground, which may link to last week's topic; or a plain topic introduction with the student's motive)
 
 ### Title slide and closing line
 
-D7 (4). The title slide states the point, lead-first. Then the line that closes the talk.
+D7 (5). The title slide states the point, lead-first. Then the line that closes the talk.
 
 - Title slide: TBD
 - Closing line: TBD
 
 ### Slide theses
 
-D7 (5). One sentence per slide.
+D7 (6). One sentence per slide.
 
 | # | Section id | Role | Thesis |
 |---|---|---|---|
@@ -163,7 +163,7 @@ D7 (5). One sentence per slide.
 
 ### Evidence list
 
-D7 (6). Real output only. Each item names its source run and its slide.
+D7 (7). Real output only. Each item names its source run and its slide.
 
 | Slide | Evidence | File in `evidence/` | How it was made |
 |---|---|---|---|
@@ -171,7 +171,7 @@ D7 (6). Real output only. Each item names its source run and its slide.
 
 ### Terms to define on screen
 
-D7 (7). Terms the audience may not know. Each gets a short on-screen definition.
+D7 (8). Terms the audience may not know. Each gets a short on-screen definition.
 
 | Term | On-screen definition | Slide |
 |---|---|---|
@@ -179,7 +179,7 @@ D7 (7). Terms the audience may not know. Each gets a short on-screen definition.
 
 ### Script
 
-D7 (8), optional. Ask "발표 스크립트를 먼저 만들까요?". Yes: a full per-slide script here. No: write `없음 — build가 가벼운 노트를 씀`. After build, replace the script with `build에서 노트로 옮김 — 이후 수정은 페이지에서` (D9).
+D7 (9), optional. Ask "발표 스크립트를 먼저 만들까요?". Yes: a full per-slide script here. No: write `없음 — build가 가벼운 노트를 씀`. After build, replace the script with `build에서 노트로 옮김 — 이후 수정은 페이지에서` (D9).
 
 TBD
 

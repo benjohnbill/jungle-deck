@@ -18,7 +18,7 @@ Source: SPEC "Shared Jungle context", from the author's own words (sessions 2026
 | Language | Korean speech and prose. Code, identifiers, and tool output stay in their original form. | Use a font that renders Korean and code. Break Korean text at word boundaries. |
 | Time | 2 minutes. No Q&A. The limit is background, not a gate (D10). | 6 ± 2 slides (a suggestion, not a rule). Do not run a timer check. Do not cut content only to fit the time. Speaker notes are a light suggested script unless the student confirmed a full script. |
 | Display | A large monitor in a bright lecture room. | The accent, the code, and the logs must stay readable in bright light. Keep code text large. |
-| Story type | Storytelling is preferred: "2분이지만 발표는 스토리텔링." A troubleshooting or experiment story fits best. | Use a narrative story frame (grill round 3), not an explanation-style list. |
+| Story type | Storytelling is preferred: "2분이지만 발표는 스토리텔링." A troubleshooting or experiment story fits best. | Use a narrative story frame (grill round 4), not an explanation-style list. |
 | Evidence | Real output that the student ran this week: test results or terminal logs, from whatever toolchain the week uses. | Use only output the student ran. Each piece of evidence names the command that made it. |
 | Reuse | The presentation also feeds the student's WIL. | Each slide must read without the speaker. Keep the notes in the file. |
 
