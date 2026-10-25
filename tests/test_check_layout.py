@@ -108,9 +108,10 @@ class FindBrowser(unittest.TestCase):
         self.assertEqual(check_layout.find_browser("Windows", env, lambda p: p == edge, lambda n: None), edge)
 
     def test_wsl_without_a_linux_browser_finds_windows_edge(self):
-        edge = "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
-        self.assertEqual(check_layout.find_browser("Linux", {}, lambda p: p == edge, lambda n: None, wsl=True), edge)
-        self.assertIsNone(check_layout.find_browser("Linux", {}, lambda p: p == edge, lambda n: None, wsl=False))
+        env = {"PROGRAMFILES(X86)": "/win/Program Files (x86)"}
+        edge = "/win/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+        self.assertEqual(check_layout.find_browser("Linux", env, lambda p: p == edge, lambda n: None, wsl=True), edge)
+        self.assertIsNone(check_layout.find_browser("Linux", env, lambda p: p == edge, lambda n: None, wsl=False))
 
     def test_none_when_nothing_is_installed(self):
         for system in ("Linux", "Darwin", "Windows"):
@@ -158,10 +159,10 @@ LONG = "".join("<p>넘치는 줄 %d: 이 슬라이드에는 글이 너무 많아
 COVER = '<svg style="position:absolute;inset:0;width:100%;height:100%"></svg>'
 
 
-WSL_EDGE = "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+WSL_EDGE = (check_layout.is_wsl() and check_layout.find_browser("Linux", which=lambda n: None, wsl=True)) or ""
 
 
-@unittest.skipUnless(check_layout.is_wsl() and os.path.isfile(WSL_EDGE), "not WSL with Windows Edge")
+@unittest.skipUnless(WSL_EDGE, "not WSL with a Windows Chromium-family browser")
 class WindowsBrowserFromWsl(unittest.TestCase):
     def test_windows_edge_measures_a_page_in_the_wsl_filesystem(self):
         with tempfile.TemporaryDirectory() as d:

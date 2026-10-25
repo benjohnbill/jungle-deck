@@ -38,7 +38,6 @@ MAC_APPS = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 WIN_ROOTS = ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA")
 WIN_EXES = (r"Google\Chrome\Application\chrome.exe", r"Microsoft\Edge\Application\msedge.exe",
             r"Chromium\Application\chrome.exe")
-WSL_ROOTS = ("/mnt/c/Program Files", "/mnt/c/Program Files (x86)")
 
 MEASURE_JS = r"""<script>
 (() => {
@@ -102,6 +101,23 @@ def is_wsl():
         return False
 
 
+def windows_env_from_wsl():
+    """The WIN_ROOTS variables of Windows, as WSL paths, read through cmd.exe."""
+    try:
+        out = subprocess.run(["cmd.exe", "/c", "echo " + ";".join("%" + r + "%" for r in WIN_ROOTS)],
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding="utf-8",
+                             errors="replace", cwd="/", timeout=10).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return {}
+    env = {}
+    for root, value in zip(WIN_ROOTS, out.split(";")):
+        if value and not value.startswith("%"):
+            unix = subprocess.run(["wslpath", "-u", value], stdout=subprocess.PIPE, encoding="utf-8")
+            if unix.stdout.strip():
+                env[root] = unix.stdout.strip()
+    return env
+
+
 def find_browser(system=None, env=None, is_file=os.path.isfile, which=shutil.which, wsl=None):
     """Path of a Chromium-family browser, or None. Firefox cannot dump the DOM after scripts run.
     On WSL with no Linux browser, the Windows one: Edge ships with every Windows."""
@@ -117,7 +133,8 @@ def find_browser(system=None, env=None, is_file=os.path.isfile, which=shutil.whi
     elif system == "Windows":
         candidates = [str(PureWindowsPath(env[root], exe)) for root in WIN_ROOTS if env.get(root) for exe in WIN_EXES]
     elif wsl:
-        candidates = [root + "/" + exe.replace("\\", "/") for root in WSL_ROOTS for exe in WIN_EXES]
+        roots = windows_env_from_wsl() if env is os.environ else env
+        candidates = [roots[r] + "/" + exe.replace("\\", "/") for r in WIN_ROOTS if roots.get(r) for exe in WIN_EXES]
     else:
         candidates = []
     return next((c for c in candidates if is_file(c)), None)
@@ -191,7 +208,7 @@ def wsl_windows_path(path):
 def wsl_windows_temp():
     """A WSL path to the Windows %TEMP%: a Windows browser keeps its profile there."""
     out = subprocess.run(["cmd.exe", "/c", "echo %TEMP%"], stdout=subprocess.PIPE,
-                         stderr=subprocess.DEVNULL, encoding="utf-8", errors="replace", cwd="/mnt/c")
+                         stderr=subprocess.DEVNULL, encoding="utf-8", errors="replace", cwd="/")
     unix = subprocess.run(["wslpath", "-u", out.stdout.strip()], stdout=subprocess.PIPE, encoding="utf-8")
     return unix.stdout.strip() or None
 
