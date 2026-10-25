@@ -725,11 +725,14 @@ function deletedSlides(saved, file) {
 /* Overflow on one measured box: {sw, cw, sh, ch} its scroll and client sizes, r its
    rect [left, top, right, bottom], clip the rect of the nearest ancestor that clips
    it (null: none), cuts: the box cuts long lines on purpose (code in a <pre>), so only
-   its height counts. Over: the content is larger than the box, or the box reaches past
-   the clip on any side (centered content overflows at the top too). 1 px is rounding */
-const OVER_PX = 1;
+   its height counts, fs its font size in px. Over: the content is larger than the box,
+   or the box reaches past the clip on any side (centered content overflows at the top
+   too). 1 px is rounding. A font box taller than the line height (Malgun Gothic, the
+   Korean font of Windows, under line-height 1.32) adds up to SPILL_EM of height below
+   the last line; that is not overflow, and one more line is always more (#39) */
+const OVER_PX = 1, SPILL_EM = 0.2;
 function overflows(m) {
-    if ((!m.cuts && m.sw > m.cw + OVER_PX) || m.sh > m.ch + OVER_PX) return true;
+    if ((!m.cuts && m.sw > m.cw + OVER_PX) || m.sh > m.ch + Math.max(OVER_PX, SPILL_EM * (m.fs || 0))) return true;
     const c = m.clip, [l, t, r, b] = m.r;
     return !!c && (l < c[0] - OVER_PX || t < c[1] - OVER_PX || r > c[2] + OVER_PX || b > c[3] + OVER_PX);
 }
@@ -824,7 +827,7 @@ function measure(el) {
     let a = el.parentElement;
     while (a && !clipsContent(a) && !a.classList.contains('slide')) a = a.parentElement;
     return { sw: el.scrollWidth, cw: el.clientWidth, sh: el.scrollHeight, ch: el.clientHeight,
-             r: rectOf(el), clip: a ? rectOf(a) : null,
+             fs: parseFloat(getComputedStyle(el).fontSize), r: rectOf(el), clip: a ? rectOf(a) : null,
              cuts: el.tagName === 'PRE' && getComputedStyle(el).whiteSpace === 'pre' };
 }
 /* Checked once the typing settles, and never while a step slides in: measuring holds

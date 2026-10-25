@@ -238,6 +238,12 @@ class OverflowTest(unittest.TestCase):
     def test_one_pixel_of_rounding_is_not_overflow(self):
         self.assertFalse(self.over(sh=81, sw=301, r=[49.5, 99.5, 1230.8, 620.9]))
 
+    def test_a_tall_font_box_below_the_last_line_is_not_overflow(self):
+        # #39: Windows Chrome, one-line h1 in Malgun Gothic at line-height 1.22
+        self.assertFalse(self.over(sh=107, ch=103, fs=84.48))
+        self.assertTrue(self.over(sh=103 + 77, ch=103, fs=84.48))   # one more line
+        self.assertTrue(self.over(sh=84, ch=80))                    # no font size: 1 px
+
 
 # A tiny element tree for the edit rule: N(tag, attrs, *children), text as str.
 FAKE_DOM = """
