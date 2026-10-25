@@ -117,7 +117,7 @@ class LocalTemplate(unittest.TestCase):
         self.assertIn('class="b">발표 자료<', self.text)
 
     def test_local_file_is_gitignored(self):
-        lines = (ROOT / ".gitignore").read_text().splitlines()
+        lines = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
         self.assertIn("jungle-deck.local.md", [l.strip() for l in lines])
 
 

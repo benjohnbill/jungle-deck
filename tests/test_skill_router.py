@@ -29,7 +29,7 @@ def front_matter_field(front, key):
 
 class FrontMatterTest(unittest.TestCase):
     def setUp(self):
-        self.front, _ = split_front_matter(SKILL.read_text())
+        self.front, _ = split_front_matter(SKILL.read_text(encoding="utf-8"))
 
     def test_name_is_jungle_deck(self):
         self.assertEqual(front_matter_field(self.front, "name"), "jungle-deck")
@@ -59,7 +59,7 @@ PHASE_FILES = {
 
 class RoutingTest(unittest.TestCase):
     def setUp(self):
-        _, self.body = split_front_matter(SKILL.read_text())
+        _, self.body = split_front_matter(SKILL.read_text(encoding="utf-8"))
 
     def test_each_phase_routes_to_its_reference_file(self):
         for phase, path in PHASE_FILES.items():
@@ -97,7 +97,7 @@ class RoutingTest(unittest.TestCase):
 
 class FirstRunTest(unittest.TestCase):
     def setUp(self):
-        _, self.body = split_front_matter(SKILL.read_text())
+        _, self.body = split_front_matter(SKILL.read_text(encoding="utf-8"))
 
     def test_missing_local_md_is_created_from_template(self):
         self.assertRegex(
@@ -112,7 +112,7 @@ class FirstRunTest(unittest.TestCase):
 
     def test_local_md_is_gitignored(self):
         self.assertIn("jungle-deck.local.md",
-                      (ROOT / ".gitignore").read_text().splitlines())
+                      (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines())
 
 
 # D15: dependency -> a word its fallback cell must name.
@@ -147,7 +147,7 @@ class SessionBreakTest(unittest.TestCase):
     """D27: one suggested new session, at design -> build."""
 
     def test_one_suggestion_at_design_to_build(self):
-        _, body = split_front_matter(SKILL.read_text())
+        _, body = split_front_matter(SKILL.read_text(encoding="utf-8"))
         text = section(body, "Steps")
         self.assertIn("새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요", text)
         self.assertRegex(text, r"`design` to `build`")
@@ -157,7 +157,7 @@ class SessionBreakTest(unittest.TestCase):
 
 class DependencyTest(unittest.TestCase):
     def setUp(self):
-        _, body = split_front_matter(SKILL.read_text())
+        _, body = split_front_matter(SKILL.read_text(encoding="utf-8"))
         self.rows = table_rows(section(body, "Dependencies"))
 
     def test_each_dependency_has_detection_and_named_fallback(self):
@@ -183,7 +183,7 @@ class VerificationStateTest(unittest.TestCase):
     """D19: the skill states which phases a real deck has verified."""
 
     def setUp(self):
-        _, body = split_front_matter(SKILL.read_text())
+        _, body = split_front_matter(SKILL.read_text(encoding="utf-8"))
         self.text = section(body, "Verification state")
         self.flat = " ".join(self.text.split())
 
@@ -227,7 +227,7 @@ class WordsTest(unittest.TestCase):
     """SPEC "Words": user-facing speech says 발표 자료; old phrases still trigger."""
 
     def setUp(self):
-        _, body = split_front_matter(SKILL.read_text())
+        _, body = split_front_matter(SKILL.read_text(encoding="utf-8"))
         self.text = section(body, "Words")
 
     def test_names_the_user_facing_word_and_the_old_phrases(self):
@@ -237,12 +237,12 @@ class WordsTest(unittest.TestCase):
 
     def test_no_stale_week_repo_paths(self):
         # The save folder replaced the week repo (D5).
-        self.assertNotIn("week repo", SKILL.read_text())
+        self.assertNotIn("week repo", SKILL.read_text(encoding="utf-8"))
 
 
 class RouterOnlyTest(unittest.TestCase):
     def setUp(self):
-        self.text = SKILL.read_text()
+        self.text = SKILL.read_text(encoding="utf-8")
 
     def test_every_named_repo_path_exists(self):
         paths = [p for p in re.findall(r"`([^`\s]+)`", self.text)
@@ -259,7 +259,7 @@ class RouterOnlyTest(unittest.TestCase):
         mine = shingles(split_front_matter(self.text)[1])
         for ref in sorted((ROOT / "reference").glob("*.md")):
             with self.subTest(ref=ref.name):
-                shared = mine & shingles(ref.read_text())
+                shared = mine & shingles(ref.read_text(encoding="utf-8"))
                 self.assertFalse(shared, sorted(shared)[:3])
 
 

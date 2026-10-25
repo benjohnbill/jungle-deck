@@ -37,7 +37,7 @@ def pure_block():
 def run(expr):
     """Evaluate a JS expression after the pure block; return its JSON value."""
     src = pure_block() + "\nprocess.stdout.write(JSON.stringify(" + expr + "));\n"
-    out = subprocess.run([NODE, "-e", src], capture_output=True, text=True, timeout=30)
+    out = subprocess.run([NODE, "-e", src], capture_output=True, encoding="utf-8", timeout=30)
     if out.returncode:
         raise AssertionError(out.stderr)
     return json.loads(out.stdout)

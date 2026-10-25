@@ -288,7 +288,7 @@ class ThreeWaySaveTest(Saving):
         self.assertEqual(self.deck.read_bytes(), before)
         payload = Path(reply["payload"])
         self.assertTrue(payload.is_file())
-        self.assertEqual(payload.parent, self.folder / "_backup")
+        self.assertEqual(payload.parent.resolve(), (self.folder / "_backup").resolve())
         self.assertRegex(payload.name, r"^rejected-.*\.json$")
         return json.loads(payload.read_text(encoding="utf-8"))
 

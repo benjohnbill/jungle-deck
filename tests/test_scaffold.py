@@ -25,7 +25,7 @@ UPSTREAM_DIR = Path(os.environ.get(
 
 
 def recorded_commit():
-    text = (VENDOR / "SOURCE.md").read_text()
+    text = (VENDOR / "SOURCE.md").read_text(encoding="utf-8")
     m = re.search(r"\b([0-9a-f]{40})\b", text)
     if not m:
         raise AssertionError("SOURCE.md records no 40-hex upstream commit")
@@ -34,7 +34,7 @@ def recorded_commit():
 
 class ReadmeTest(unittest.TestCase):
     def setUp(self):
-        self.text = (ROOT / "README.md").read_text()
+        self.text = (ROOT / "README.md").read_text(encoding="utf-8")
 
     def test_states_install_by_clone(self):
         self.assertRegex(self.text, r"git clone https://github\.com/[\w.-]+/jungle-deck "
@@ -54,12 +54,12 @@ class VendorTest(unittest.TestCase):
             self.assertTrue((VENDOR / name).is_file(), name)
 
     def test_license_is_mit(self):
-        text = (VENDOR / "LICENSE").read_text()
+        text = (VENDOR / "LICENSE").read_text(encoding="utf-8")
         self.assertTrue(text.startswith("MIT License"))
         self.assertIn("Zara Zhang", text)
 
     def test_source_note_names_upstream_and_commit(self):
-        self.assertIn(UPSTREAM_URL, (VENDOR / "SOURCE.md").read_text())
+        self.assertIn(UPSTREAM_URL, (VENDOR / "SOURCE.md").read_text(encoding="utf-8"))
         recorded_commit()
 
     @unittest.skipUnless((UPSTREAM_DIR / ".git").exists(),
