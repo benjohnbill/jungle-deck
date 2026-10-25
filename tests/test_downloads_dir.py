@@ -109,8 +109,9 @@ class Cli(unittest.TestCase):
         return code, out.getvalue(), err.getvalue()
 
     def test_prints_the_folder(self):
-        code, out, err = self.run_main(Path("/mnt/d/Users/Student/Downloads"))
-        self.assertEqual((code, out.strip(), err), (0, "/mnt/d/Users/Student/Downloads", ""))
+        folder = Path("/mnt/d/Users/Student/Downloads")
+        code, out, err = self.run_main(folder)
+        self.assertEqual((code, out.strip(), err), (0, str(folder), ""))
 
     def test_no_folder_exits_non_zero_and_says_ask(self):
         code, out, err = self.run_main(None)

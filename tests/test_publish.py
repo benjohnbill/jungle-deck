@@ -127,7 +127,8 @@ class Copy(Workspace):
     def test_tilde_in_pages_repo_expands_to_home(self):
         write_local(self.local, pages_repo="~/pages",
                     pages_url_base="https://x.github.io/")
-        with unittest.mock.patch.dict("os.environ", {"HOME": str(self.tmp)}):
+        with unittest.mock.patch.dict("os.environ", {"HOME": str(self.tmp),
+                                                        "USERPROFILE": str(self.tmp)}):
             code, _, _ = run("copy", "--local", str(self.local),
                              "--deck", str(self.deck), "--week", "03")
         self.assertEqual(code, 0)
@@ -245,29 +246,29 @@ class BackLink(Workspace):
         self.assertEqual(code, 0, err)
 
     def test_week_page_links_two_levels_up(self):
-        (self.pages / "index.html").write_text("<h1>notes</h1>")
+        (self.pages / "index.html").write_text("<h1>notes</h1>", encoding="utf-8")
         self.copy("--week", "3")
-        page = (self.pages / "study" / "week03" / "sample-deck.html").read_text()
+        page = (self.pages / "study" / "week03" / "sample-deck.html").read_text(encoding="utf-8")
         self.assertIn('<a class="home-link" href="../../">', page)
 
     def test_page_without_week_links_one_level_up(self):
-        (self.pages / "index.html").write_text("<h1>notes</h1>")
+        (self.pages / "index.html").write_text("<h1>notes</h1>", encoding="utf-8")
         self.copy()
-        page = (self.pages / "study" / "sample-deck.html").read_text()
+        page = (self.pages / "study" / "sample-deck.html").read_text(encoding="utf-8")
         self.assertIn('<a class="home-link" href="../">← 학습 기록</a>', page)
         self.assertEqual(page.replace('href="../">', 'href="../../">').encode(), LINKED)
 
     def test_depth_counts_from_pages_dir(self):
         (self.pages / "docs").mkdir()
-        (self.pages / "docs" / "index.html").write_text("<h1>notes</h1>")
+        (self.pages / "docs" / "index.html").write_text("<h1>notes</h1>", encoding="utf-8")
         write_local(self.local, pages_repo=str(self.pages), pages_dir="docs")
         self.copy()
-        page = (self.pages / "docs" / "study" / "sample-deck.html").read_text()
+        page = (self.pages / "docs" / "study" / "sample-deck.html").read_text(encoding="utf-8")
         self.assertIn('<a class="home-link" href="../">', page)
 
     def test_no_index_drops_the_link(self):
         self.copy("--week", "3")
-        page = (self.pages / "study" / "week03" / "sample-deck.html").read_text()
+        page = (self.pages / "study" / "week03" / "sample-deck.html").read_text(encoding="utf-8")
         self.assertNotIn("home-link", page)
         self.assertIn('<img src="sample-deck.assets/a.png">', page)
 
@@ -275,7 +276,7 @@ class BackLink(Workspace):
         (self.deck.parent / "sample-deck.assets").mkdir()
         (self.deck.parent / "sample-deck.assets" / "a.png").write_bytes(b"png")
         self.copy("--slug", "sample-deck-2")
-        page = (self.pages / "study" / "sample-deck-2.html").read_text()
+        page = (self.pages / "study" / "sample-deck-2.html").read_text(encoding="utf-8")
         self.assertIn('<img src="sample-deck-2.assets/a.png">', page)
         self.assertTrue((self.pages / "study" / "sample-deck-2.assets" / "a.png").is_file())
 
@@ -293,7 +294,7 @@ class Contract(unittest.TestCase):
         self.assertRegex(out.getvalue(), r"--interval[^\n]*\n?[^-]*default: 10\)")
 
     def test_script_cannot_run_git(self):
-        source = (ROOT / "scripts" / "publish.py").read_text()
+        source = (ROOT / "scripts" / "publish.py").read_text(encoding="utf-8")
         for word in ("subprocess", "os.system", "popen"):
             self.assertNotIn(word, source.lower())
 
@@ -331,7 +332,7 @@ class UrlBase(Workspace):
     def test_cname_in_pages_dir_gives_the_custom_domain(self):
         self.origin("https://github.com/someone/talks.git")
         (self.pages / "docs").mkdir()
-        (self.pages / "docs" / "CNAME").write_text("talks.example.org\n")
+        (self.pages / "docs" / "CNAME").write_text("talks.example.org\n", encoding="utf-8")
         write_local(self.local, pages_repo=str(self.pages), pages_dir="docs")
         _, _, err = self.deck_url_from_verify()
         self.assertIn("https://talks.example.org/study/week03/sample-deck.html", err)
@@ -380,7 +381,7 @@ class Verify(Workspace):
         live.write_bytes(deck)
         href = self.deck_url if card else "elsewhere.html"
         index = index or f'<a class="card two" href="{href}">x</a>'
-        (self.site / "index.html").write_text(index)
+        (self.site / "index.html").write_text(index, encoding="utf-8")
 
     def verify(self, timeout="2", interval="0.05", week=("--week", "3")):
         return run("verify", "--local", str(self.local), "--deck", str(self.deck),
@@ -418,14 +419,14 @@ class Verify(Workspace):
         self.assertIn(self.base + "study/sample-deck.html", out)
 
     def test_div_card_markup_also_expects_a_card(self):
-        (self.pages / "index.html").write_text('<div class="wide card" data-week="2">x</div>')
+        (self.pages / "index.html").write_text('<div class="wide card" data-week="2">x</div>', encoding="utf-8")
         self.go_live(card=False)
         code, _, err = self.verify(timeout="0.3")
         self.assertNotEqual(code, 0)
         self.assertIn("card", err)
 
     def test_index_without_card_markup_checks_no_card(self):
-        (self.pages / "index.html").write_text("<h1>notes</h1>")
+        (self.pages / "index.html").write_text("<h1>notes</h1>", encoding="utf-8")
         self.go_live(card=False)
         code, _, err = self.verify()
         self.assertEqual(code, 0, err)
