@@ -143,6 +143,17 @@ def table_rows(text):
     return rows[1:]  # drop the header row
 
 
+class NoReadBeforeOpeningTest(unittest.TestCase):
+    """D8: a verify run caught `git log` in the BRIEF search, before the opening answer."""
+
+    def test_find_step_reads_no_repo_history(self):
+        _, body = split_front_matter(SKILL.read_text(encoding="utf-8"))
+        text = " ".join(section(body, "Steps").split())
+        self.assertIn("git rev-parse --show-toplevel", text)
+        self.assertRegex(text, r"(?i)no `git log`")
+        self.assertRegex(text, r"(?i)before the student answers the opening question")
+
+
 class SessionBreakTest(unittest.TestCase):
     """D27: one suggested new session, at design -> build."""
 

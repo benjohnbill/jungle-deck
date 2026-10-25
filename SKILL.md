@@ -49,6 +49,11 @@ hooks; do each one there:
 Done when you hold one BRIEF.md path, already migrated, or you started a
 new one from the skeleton.
 
+Until the student answers the opening question of `grill`, read only
+`BRIEF.md` files and `jungle-deck.local.md` (D8). For `source_repo`, run
+`git rev-parse --show-toplevel` and nothing else: no `git log`, no repo
+files, before the student answers the opening question.
+
 ### 3. Read BRIEF.md and dispatch
 
 Read `BRIEF.md` first, before any other file of the presentation. A new
