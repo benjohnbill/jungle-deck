@@ -8,7 +8,9 @@ step shown, and prints one line per <section class="slide">, then a summary.
 Overflow uses the page's own check (boxesIn, overflows, measure in
 templates/stage.html), the same one that marks boxes in edit mode. Overlap:
 two content boxes on one slide (text, img, svg, video, canvas, iframe, real
-run output) whose drawn areas cross, where neither holds the other.
+run output) whose drawn areas cross, where neither holds the other. Small text:
+SVG text that renders under MIN_FIGURE_PX, because a viewBox wider than its slot
+scales every label down.
 
 The page is copied next to the original with a measuring script added, so
 relative assets resolve; the copy and the browser profile are always removed.
@@ -30,6 +32,7 @@ SIZES = ((1280, 720), (1920, 1080))
 EXIT_CLEAN, EXIT_FOUND, EXIT_ERROR, EXIT_SKIPPED = 0, 1, 2, 3
 TIMEOUT_S = 60
 FONT_WAIT_MS, LOAD_WAIT_MS, STOP_MS = 3000, 6000, 8000
+MIN_FIGURE_PX = 12
 
 PATH_NAMES = ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser",
               "microsoft-edge", "microsoft-edge-stable", "chrome", "msedge")
@@ -78,7 +81,14 @@ function run() {
             if (!a.contains(b) && !b.contains(a) && ra.some(x => rb.some(y => cross(x, y))))
                 overlap.push([label(a), label(b)]);
         }));
-        return {id: s.id || '#' + (i + 1), overflow, overlap};
+        const small = Array.from(s.querySelectorAll('svg text'))
+            .filter(t => !t.closest('aside.notes') && t.getClientRects().length && t.textContent.trim())
+            .map(t => {
+                const m = t.getScreenCTM();
+                return [label(t), Math.round(parseFloat(getComputedStyle(t).fontSize) * (m ? Math.hypot(m.a, m.b) : 1) * 10) / 10];
+            })
+            .filter(([, px]) => px < MIN_FIGURE_PX);
+        return {id: s.id || '#' + (i + 1), overflow, overlap, small};
     });
     const missing = document.querySelector('link[data-jd-remote][media=print]');
     out({viewport: [innerWidth, innerHeight], fonts: missing ? 'missing' : document.fonts.status, sections});
@@ -94,7 +104,8 @@ setTimeout(go, LOAD_WAIT_MS);
 </script>
 """
 
-MEASURE_JS = MEASURE_JS.replace("FONT_WAIT_MS", str(FONT_WAIT_MS)).replace("LOAD_WAIT_MS", str(LOAD_WAIT_MS))
+MEASURE_JS = (MEASURE_JS.replace("FONT_WAIT_MS", str(FONT_WAIT_MS)).replace("LOAD_WAIT_MS", str(LOAD_WAIT_MS))
+              .replace("MIN_FIGURE_PX", str(MIN_FIGURE_PX)))
 
 # An external stylesheet blocks every later script until it arrives; offline, that is never.
 # In the measuring copy it loads without blocking (the page itself is unchanged).
@@ -175,6 +186,8 @@ def report(measurements):
                 items.append("overflow %s: %s" % (size, ", ".join(sec["overflow"])))
             if sec["overlap"]:
                 items.append("overlap %s: %s" % (size, ", ".join("%s × %s" % tuple(p) for p in sec["overlap"])))
+            if sec.get("small"):
+                items.append("small text %s: %s" % (size, ", ".join("%s %gpx" % tuple(t) for t in sec["small"])))
     lines = ["%s  %s" % (sid, "; ".join(items) if items else "ok") for sid, items in found.items()]
     if any(data.get("fonts", "loaded") != "loaded" for _, data in measurements):
         lines.append("note: a web font or an external stylesheet did not load; measured with the fallback font")
@@ -183,7 +196,7 @@ def report(measurements):
     if bad:
         lines.append("%d of %d sections need a fix: %s" % (len(bad), len(found), ", ".join(bad)))
     else:
-        lines.append("all %d sections fit at %s, no overlap" % (len(found), sizes))
+        lines.append("all %d sections fit at %s, no overlap, no small figure text" % (len(found), sizes))
     return lines, EXIT_FOUND if bad else EXIT_CLEAN
 
 
@@ -257,7 +270,7 @@ def main(argv=None):
         description="Render a built presentation page headless at 1280x720 and 1920x1080 with every "
                     "step shown. Print one line per section (ok, or each overflowing box and each "
                     "overlapping pair with the size), then a summary.",
-        epilog="exit codes: 0 every section fits, 1 overflow or overlap found, 2 error, "
+        epilog="exit codes: 0 every section fits, 1 overflow, overlap, or small figure text found, 2 error, "
                "3 skipped: no headless browser (Chrome, Chromium, or Edge)")
     ap.add_argument("page", help="the built page, <slug>.html")
     ap.add_argument("--browser", metavar="PATH", help="Chrome, Chromium, or Edge to use (default: search)")

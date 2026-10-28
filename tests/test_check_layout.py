@@ -217,6 +217,21 @@ class Render(unittest.TestCase):
         self.assertIn("svg", lines[0])
         self.assertNotIn("overflow", lines[0])
 
+    def test_figure_text_under_12px_is_small_text(self):
+        # A viewBox wider than the slot shrinks its text: 14 units in 2400 render near 7 px.
+        fig = ('<svg viewBox="0 0 2400 300" style="width:100%;display:block">'
+               '<text x="10" y="40" font-size="14">f-&gt;R.rax</text></svg>')
+        code, lines, _ = self.check(page_with((TAKEAWAY, TAKEAWAY + fig)))
+        self.assertEqual(code, 1)
+        self.assertTrue(lines[2].startswith("s3  small text"), lines[2])
+        self.assertIn("1280x720", lines[2])
+
+    def test_figure_text_at_slide_scale_is_fine(self):
+        fig = ('<svg viewBox="0 0 1160 300" style="width:100%;display:block">'
+               '<text x="10" y="40" font-size="14">f-&gt;R.rax</text></svg>')
+        code, lines, err = self.check(page_with((TAKEAWAY, TAKEAWAY + fig)))
+        self.assertEqual(code, 0, "\n".join(lines) + err)
+
     def test_a_later_step_is_measured_too(self):
         code, lines, _ = self.check(page_with((TAKEAWAY, '<div data-step="1">' + LONG + "</div>")))
         self.assertEqual(code, 1)
