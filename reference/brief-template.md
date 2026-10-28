@@ -154,12 +154,12 @@ D7 (5). The title slide states the point, lead-first. Then the line that closes 
 
 ### Slide theses
 
-D7 (6). One sentence per slide.
+D7 (6). One sentence per slide. `Show`: the one thing the audience sees on the slide. Build draws only that.
 
-| # | Section id | Role | Thesis |
-|---|---|---|---|
-| 01 | s1 | Title | TBD |
-| 02 | s2 | TBD | TBD |
+| # | Section id | Role | Thesis | Show |
+|---|---|---|---|---|
+| 01 | s1 | Title | TBD | TBD |
+| 02 | s2 | TBD | TBD | TBD |
 
 ### Evidence list
 

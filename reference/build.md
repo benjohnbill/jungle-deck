@@ -1,7 +1,7 @@
 ---
 scope: The build phase (SPEC D9, D10, D13): stage template, style from the Design section, images, filling slides and notes from BRIEF.md, viewport check, usage guidance
 authority: SPEC.md D7, D9, D10, D13. tests/test_build_revise_reference.py checks the rules here
-status: revised 2026-10-15 (#21, #31); unverified draft (D19)
+status: revised 2026-10-29 (figures); unverified draft (D19)
 ---
 
 # Build phase
@@ -52,13 +52,22 @@ Fill each slide from its row in `BRIEF.md`.
 - **Theses.** Put each thesis on its slide verbatim, as `Slide theses` records it. Do not rephrase, shorten, or fix it. If a thesis does not fit the slide, change the layout or the font size, or ask the student. Do not change the words.
 - **Title slide and closing line.** Put them on the first and the last slide, verbatim.
 - **Evidence.** Fill evidence panels only from real runs saved in `evidence/`. Use the file that the `Evidence list` names for that slide. If the log is missing, re-run the command from the `How it was made` column in `source_repo`. Save the output to `evidence/` first, then paste from that file. Never invent output, and never type output from memory. You may cut lines from a log; mark each cut with the template's `c-dim` elided line (`⋮ 생략`).
-- **Lock the evidence.** In edit mode the student can change every element that holds text of its own. Put `data-evidence` on each element that holds real run output: the `<pre>` of a log, a figure with a screenshot. The page locks it and everything inside it. Explanatory code and diagram boxes that you write stay editable. Draw a diagram with HTML boxes, not SVG: the page cannot edit SVG text. Give a diagram box the class `box` (or the attribute `data-box`), so the student can change its width. Do not set the size classes `jd-t-*` and `jd-w-*`: they are the student's size steps.
+- **Lock the evidence.** In edit mode the student can change every element that holds text of its own. Put `data-evidence` on each element that holds real run output: the `<pre>` of a log, a figure with a screenshot. The page locks it and everything inside it. Explanatory code and diagram boxes that you write stay editable. Give a diagram box the class `box` (or the attribute `data-box`), so the student can change its width. Do not set the size classes `jd-t-*` and `jd-w-*`: they are the student's size steps.
 - **Terms.** Give each term in `Terms to define on screen` its on-screen definition on the slide that the table names. Do not leave a definition only in the speaker notes.
 - **Speaker notes.** Read the `Script` slot.
   - It holds a script: put each slide's part into that slide's `<aside class="notes">`, as the student confirmed it. Then replace the slot text with `build에서 노트로 옮김 — 이후 수정은 페이지에서`. From now on the page notes are the script; the student edits them on the page.
   - It says `없음 — build가 가벼운 노트를 씀`: write each notes block as a light suggested script: one or two short lines per step, in the student's language. The student speaks in their own words.
   - Tie a line to a step with `<span class="st">▸N</span>`.
 - **Speaker name.** Use `display_name`. When it is `""`, leave the name off the title slide.
+
+## Figures
+
+The presentation is visual first. A slide whose `Show` line names an order, a branch, a path, a layout, or a quantity gets a figure under its thesis, with `data-step` reveals. Use bullets only for a list with no shape.
+
+- Read `vendor/diagram-design/SKILL.md` before the first figure, and follow its slide-scale overrides.
+- Draw only what the `Show` line names (D10: selecting by the thesis is not cutting for time).
+- A few labeled boxes that the student may retype: HTML boxes with the class `box`. Arrows, a sequence, a flowchart, a memory layout, or a chart: one inline `<svg>`. Edit mode cannot change SVG text, so the student asks for a figure change in revise.
+- Never link an `.svg` file. The revise server does not serve it.
 
 ## Time is background
 
@@ -83,6 +92,7 @@ The page shows on a large monitor in a bright room. Every slide must fit the scr
 | Code or log | 1 heading and 8–10 lines per panel |
 | Grid | 1 heading and 6 cards |
 | Image | 1 heading and 1 image, height at most 60vh |
+| Figure | 1 heading and 1 figure: 6 or fewer nodes, rows, or bars, and 4 or fewer steps |
 
 - If a slide goes over a limit, split it into two slides, or cut log lines. Never scroll, and never shrink text below the template's tokens. A split adds a row to `Slide theses`. Its thesis follows the proposal rule (`reference/grill.md`).
 
@@ -94,7 +104,7 @@ Run the layout check once, from the skill directory:
 <python_cmd> scripts/check_layout.py <save folder>/<slug>.html
 ```
 
-It renders every slide with every step shown, at 1280×720 and 1920×1080, and prints one line per section: `ok`, or the overflow and overlap it found. Exit 0: every section fits. Exit 1: fix each listed section (split it, or cut log lines, as in "Viewport and density"), then run it once more. Exit 2: read the error line. Exit code 3 means no headless browser (Chrome, Chromium, or Edge) was found: skip the check (D15).
+It renders every slide with every step shown, at 1280×720 and 1920×1080, and prints one line per section: `ok`, or the overflow and overlap it found. Exit 0: every section fits. Exit 1: fix each listed section (split it, or cut log lines, as in "Viewport and density"), then run it once more. `small text` names figure text under 12 px: make the viewBox no larger than the slot, or split the figure. Do not lower the font size. Exit 2: read the error line. Exit code 3 means no headless browser (Chrome, Chromium, or Edge) was found: skip the check (D15).
 
 Do not write a screenshot tool of your own, and do not run a screenshot-and-fix loop. The script cannot judge looks, a step that never shows, or an image that does not load: the student opens the page and gives that feedback (Finish, step 4).
 

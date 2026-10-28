@@ -15,7 +15,7 @@ The agent owns the layout and the evidence.
 
 ## Rules
 
-- **Who changes what.** The server path is the default (D11). Text and position edits are the student's: in edit mode (`E`, then `Ctrl+S`). You make structural changes (add, split, reorder, or delete a slide) and evidence changes. While the server works, do not ask the student for screenshots of the page: read `.serve.log`, the diff, and the `check_layout.py` report.
+- **Who changes what.** The server path is the default (D11). Text and position edits are the student's: in edit mode (`E`, then `Ctrl+S`). You make structural changes (add, split, reorder, or delete a slide) and evidence changes. Edit mode cannot change text inside an SVG figure, so figure changes are yours too: when the student asks ("이 경로만 강조해 줘", "이 행은 빼 줘"), change the `<svg>` as `reference/build.md` § Figures says, and update the slide's `Show` line in `BRIEF.md` when the point changed. While the server works, do not ask the student for screenshots of the page: read `.serve.log`, the diff, and the `check_layout.py` report.
 - Do not overwrite the student's wording. After a save, the student's text is the source of truth. Change layout, size, steps, and evidence around it. If a layout fix needs other words, propose them under the proposal rule (`reference/grill.md`) and use the student's pick.
 - The student's size steps are the student's choice, like their words: the classes `jd-t-*` (text size) and `jd-w-*` (box width) that the page's size toolbar sets. Keep them in your layout pass. When a slide cannot fit with them, propose a change under the proposal rule and use the student's pick.
 - Keep every `<section id>` stable. Every save matches sections by id.

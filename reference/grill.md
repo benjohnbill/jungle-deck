@@ -1,7 +1,7 @@
 ---
 scope: The grill phase (SPEC D7, D8): the opening question, the meta round, scoped context collection, the check-in, the grill rounds, the proposal rule, inline grilling
 authority: SPEC.md D7, D8, D10, D15, D22; docs/adr/0001-ask-before-collecting-context.md. tests/test_grill_reference.py checks the rules here; slot names follow reference/brief-template.md
-status: revised 2026-10-25; unverified draft (D19)
+status: revised 2026-10-29 (Show line); unverified draft (D19)
 ---
 
 # Grill phase
@@ -76,7 +76,7 @@ Run these in order. Each item is a round; wait for the student's answers before 
    - Structure: 오프닝 → 도입 → 전개 → 전환 → 마무리 (storytelling; recommend it), or 증상 → 증거 → 원인.
    - Opening: common ground, which may link to last week's topic (read the BRIEF at `prev_brief`), or a plain topic introduction with the student's motive.
 5. **Title slide and closing line.** The title slide states the point, lead-first. Then the line that closes the talk.
-6. **Slide theses.** One sentence per slide, under the proposal rule.
+6. **Slide theses.** One sentence per slide, under the proposal rule. With each thesis, draft its `Show` line: the one thing the audience sees on that slide, such as one path, one branch, a few rows, or a count. Write it in the student's words. The student confirms each thesis and its `Show` line together, so this adds no question. A `Show` line that names two things means two slides: propose the split.
 7. **Evidence list.** Which real output goes on which slide, and how it was made. Follow the Evidence row of `reference/context.md`. Re-run each command in `source_repo` and save its output under `<save folder>/evidence/`.
 8. **Terms to define on screen.** Terms the audience may not know, each with a short on-screen definition.
 9. **Script**, optional. Ask "발표 스크립트를 먼저 만들까요?".
