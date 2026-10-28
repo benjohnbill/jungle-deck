@@ -9,6 +9,7 @@ The maintained source for verifying jungle-deck as a student meets it. Read
 | [vague-plan](vague-plan.md) | A student with only a fuzzy idea gets help inside that idea | 14 |
 | [no-plan](no-plan.md) | A student with nothing gets the meta round, not a topic list | 10 |
 | [slides-match-intent](slides-match-intent.md) | The built page carries the student's plan and fits the screen | 30 |
+| [figures-legible](figures-legible.md) | Each figure shows its `Show` line only, reads at slide size, and reveals in steps | 30 |
 | [token-delta](token-delta.md) | The new revision uses fewer tokens than the old one on the same persona | per feature |
 
 ## Baseline preconditions
