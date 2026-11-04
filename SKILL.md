@@ -72,6 +72,8 @@ it:
 | `publish` | `reference/publish.md` (its own numbered steps, commit to live check) |
 | `done` | Nothing to run. Give the live URL from the `Publish` section. For a new presentation, follow "How to resume" step 3 in `reference/brief-template.md` |
 
+A student who asks for a ready design to reference, or names a published case, goes to "Cases" in `reference/design.md`.
+
 A BRIEF at `design` or later skips grilling (D6). Moving `phase` follows
 "Who changes `phase`" in `reference/brief-template.md`, at every phase.
 

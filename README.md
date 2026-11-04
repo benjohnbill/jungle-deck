@@ -37,6 +37,7 @@ git clone https://github.com/benjohnbill/jungle-deck "$HOME\.claude\skills\jungl
 - `scripts/`: 수정 서버, 레이아웃 검사, 게시에 쓰는 스크립트.
 - `vendor/`: 함께 배포하는 `frontend-slides`와 `diagram-design` 복사본.
 - `docs/examples/`: 사람이 보는 예시 발표 자료. 스킬은 읽지 않아요.
+- `cases/`: 완성한 발표별 `DESIGN.md`와 기록. 빠르게 참고할 디자인을 달라고 하거나 사례를 참고해 달라고 할 때만 스킬이 읽어요.
 - `tests/`: 규칙 파일과 스크립트의 테스트. 스킬을 쓸 때는 필요 없어요.
 
 ## 다음에 읽을 것

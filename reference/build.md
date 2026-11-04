@@ -31,6 +31,8 @@ The template has four example slides: title, code panels, takeaway, closing. Cop
 
 Read the style only from the `Design` section of `BRIEF.md` (D9). The design phase settled it (`reference/design.md`).
 
+When `Source` is `cases/<case>/DESIGN.md`, read that file. Add its "CSS to add" to the page, and draw figures with its parts. For each `Figures from` line, read only that part in the other file. The density limits below still hold.
+
 - Write the `Tokens` values to `:root` in the page: the six color tokens and the two font stacks. Keep each fallback as `Tokens` marks it.
 - Set `--acc` to the `Accent` value.
 - Change only the token values on `:root`. Do not add a second color set elsewhere in the CSS.

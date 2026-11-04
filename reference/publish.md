@@ -251,6 +251,7 @@ sometimes some minutes. The default timeout is 600 s; change it with
 
 D14 and D17. Do this step on every path, also when there is no deploy.
 Branch on `Source` in the `Design` section of `BRIEF.md`.
+A `cases/` path is not the student's DESIGN.md: use the other branch. Never edit a file under `cases/`.
 
 If `Source` is the student's DESIGN.md:
 
