@@ -14,8 +14,6 @@ The maintained source for verifying jungle-deck as a student meets it. Read
 | [start-command](start-command.md) | `/jungle-deck` starts the skill, and speech does not | 1 |
 | [cases-on-request](cases-on-request.md) | Cases are never offered first, and a pick is recorded for build | 18 |
 | [cases-rebuild](cases-rebuild.md) | One case builds a new topic that keeps its impression | 30 |
-| [cases-public-safe](cases-public-safe.md) | Public case files hold no private fact and match their source | none |
-| [repo-state](repo-state.md) | Checkout, remote, CI, and a fresh clone agree | none |
 
 ## Baseline preconditions
 

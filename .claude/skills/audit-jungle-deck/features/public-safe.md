@@ -14,15 +14,15 @@
 
 - A stranger reads `cases/` on GitHub. A teammate searches for their own name.
 
-## Driving it with jdv.py
+## Driving it with a reader agent
 
-No `jdv.py` run. Spawn one read-only reader per case with a fresh context, and give it the case folder and these questions. Do not give it the name list: it must find names without it.
+Spawn one read-only reader per case with a fresh context, and give it the case folder and these questions. Do not give it the name list: it must find names without it.
 
 Sources: the published decks are the links in `README.md`. Ask the owner for any deck that is not there, and for the private `BRIEF.md` files. Do not write those paths into a tracked file (D24).
 
 Pass predicates:
 
-- `name-list-works`: add a listed name to a copy of a `BRIEF.md`, and run `check_cases.py` on the copy. It reports the line. Discard the copy.
+- `name-list-works`: copy a case folder to scratch, append the output of `git config user.name` to its `BRIEF.md`, and run `python3 tools/check_cases.py <copy>`. It reports that line. Delete the copy.
 - `unlisted-names`: the reader lists every proper noun in `DESIGN.md` and `BRIEF.md`, and classifies each as a public project, a tool, or a person or private repo. No item is in the last class. Git commit hashes of a private repo count as a finding to report, not a FAIL.
 - `images-clean`: open each `preview.png`. Quote any name on screen. There are none.
 - `records-true`: compare `BRIEF.md` with its source. Every line in the public copy says what the source says, apart from the anonymized names. Quote any difference.

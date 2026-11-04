@@ -1,6 +1,6 @@
 ---
 name: verify-jungle-deck
-description: Verify the jungle-deck skill the way a student uses it. Runs one revision of the skill in headless Claude Code sessions against a synthetic student repo, with you playing a scripted student persona, then judges the transcript. Use to prove that the skill follows the student's plan (no forced topic or flow), helps a student with a vague or empty plan, builds slides that match the plan, uses fewer tokens than an older revision, starts only by slash command, reads cases/ only on request, and rebuilds a case on a new topic. Also checks that public case files are safe and that the repository can be handed over.
+description: Verify the jungle-deck skill the way a student uses it. Runs one revision of the skill in headless Claude Code sessions against a synthetic student repo, with you playing a scripted student persona, then judges the transcript. Use to prove that the skill follows the student's plan (no forced topic or flow), helps a student with a vague or empty plan, builds slides that match the plan, uses fewer tokens than an older revision, starts only by slash command, reads cases/ only on request, and rebuilds a case on a new topic. For the repository itself, use audit-jungle-deck.
 ---
 
 # Verify jungle-deck
@@ -40,8 +40,7 @@ Pass when the reply holds "이번 주 발표 자료를 어디에 저장할까요
 that run and stage a fresh one. Do not ask the model for its skill list: the
 skill has `disable-model-invocation: true`, so the list does not show it. Also
 check that `claude --version` works and that `git -C <run>/week09 log --oneline`
-shows 4 commits. For the state of the repository itself, run
-`python3 tools/verify/repo_state.py`.
+shows 4 commits.
 
 ## Drive
 
@@ -127,6 +126,5 @@ claude-mem); say so in the report.
 
 ## Feature map
 
-`features/README.md` is the index. Each feature file has a persona card or a
-script, the turn cap, and the pass predicates. `cases-public-safe` and
-`repo-state` need no `claude -p` run.
+`features/README.md` is the index. Each feature file has a persona card, the
+turn cap, and the pass predicates.
