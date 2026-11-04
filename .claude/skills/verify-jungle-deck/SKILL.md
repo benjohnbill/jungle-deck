@@ -69,7 +69,7 @@ Play the student from the persona card in the feature file. Rules for you:
   wording to the question asked.
 - When the skill offers a topic or a flow that is not on the card, say no and
   restate the card's plan. Record the quote: that is a finding.
-- When it asks "새 세션에서 'jungle-deck 이어서'…", follow it with
+- When it asks "새 세션에서 '/jungle-deck 이어서'…", follow it with
   `turn ... "/jdv:jungle-deck jungle-deck 이어서" --new`.
 - Cap each feature at the turn limit in its file. A run that hits the cap is
   a finding, not a pass.

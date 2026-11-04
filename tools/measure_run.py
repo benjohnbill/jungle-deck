@@ -17,7 +17,7 @@ from pathlib import Path
 PHASES = ("grill", "design", "build", "revise", "publish")
 USAGE_KEYS = ("input_tokens", "output_tokens",
               "cache_creation_input_tokens", "cache_read_input_tokens")
-SESSION_BREAK = "새 세션에서 'jungle-deck 이어서'"
+SESSION_BREAK = "새 세션에서 '/jungle-deck 이어서'"
 SCREENSHOT_TOOL = re.compile(r"--screenshot|screenshot|cdp\.m?js|puppeteer|playwright", re.I)
 OWN_FILE = re.compile(r"skills/jungle-deck/|jungle-deck/(reference|templates|scripts|vendor|SKILL\.md)|jungle-deck\.local\.md|BRIEF\.md")
 CONTEXT_BASH = re.compile(r"\bgit (-C \S+ )?(log|show|diff|blame)\b|\bgh (issue|pr|api|project|repo)\b|curl .*github|\bcat |\bsed -n|\brg |\bgrep ")

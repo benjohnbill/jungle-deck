@@ -70,7 +70,7 @@ class MeasureRunTest(unittest.TestCase):
         res = self.run_on([
             START, user("네"),
             assistant("a", tool("Bash", command="python3 scripts/check_layout.py x.html"),
-                      {"type": "text", "text": "새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요"}),
+                      {"type": "text", "text": "새 세션에서 '/jungle-deck 이어서'라고 입력하면 가볍게 이어져요"}),
             assistant("b", tool("Bash", command="node cdp.mjs shot.png")),
         ])
         checks = res["checks"]

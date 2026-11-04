@@ -10,10 +10,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SKILL = ROOT / "SKILL.md"
 
-# D2, verbatim: the new phrases and the old ones that still trigger.
-TRIGGERS = ["발표 자료 만들자", "발표 준비", "슬라이드 만들자", "jungle-deck 이어서",
-            "발표 자료 게시", "발표 덱", "덱 게시"]
-
 
 def split_front_matter(text):
     m = re.match(r"---\n(.*?)\n---\n(.*)", text, re.S)
@@ -34,15 +30,9 @@ class FrontMatterTest(unittest.TestCase):
     def test_name_is_jungle_deck(self):
         self.assertEqual(front_matter_field(self.front, "name"), "jungle-deck")
 
-    def test_description_names_every_d2_trigger(self):
-        desc = front_matter_field(self.front, "description")
-        self.assertIsNotNone(desc, "front matter has no description")
-        for trigger in TRIGGERS:
-            self.assertIn(trigger, desc)
-
-    def test_description_says_when_to_use(self):
-        desc = front_matter_field(self.front, "description")
-        self.assertRegex(desc, r"\bUse when\b")
+    def test_only_the_slash_command_starts_the_skill(self):
+        # D2: speech does not start the skill.
+        self.assertEqual(front_matter_field(self.front, "disable-model-invocation"), "true")
 
 
 # Phase -> the reference file that runs it. `done` has no phase file; it
@@ -160,7 +150,7 @@ class SessionBreakTest(unittest.TestCase):
     def test_one_suggestion_at_design_to_build(self):
         _, body = split_front_matter(SKILL.read_text(encoding="utf-8"))
         text = section(body, "Steps")
-        self.assertIn("새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요", text)
+        self.assertIn("새 세션에서 '/jungle-deck 이어서'라고 입력하면 가볍게 이어져요", text)
         self.assertRegex(text, r"`design` to `build`")
         self.assertRegex(text, r"(?i)once")
         self.assertEqual(text.count("새 세션에서"), 1)

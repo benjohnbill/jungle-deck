@@ -28,7 +28,7 @@ Windows (PowerShell):
 git clone https://github.com/benjohnbill/jungle-deck "$HOME\.claude\skills\jungle-deck"
 ```
 
-이번 주에 작업한 저장소에서 Claude Code를 열고 "발표 자료 만들자"라고 말하세요.
+이번 주에 작업한 저장소에서 Claude Code를 열고 `/jungle-deck`을 입력하세요.
 
 ## Map (파일 지도)
 - `SKILL.md` (entry): 스킬의 시작점. `BRIEF.md`를 찾아 지금 단계의 규칙 파일로 넘겨요.
@@ -72,13 +72,13 @@ Agents: if a path named here does not exist, report it to the owner.
 ## 처음 실행할 때
 
 1. 이번 주에 작업한 저장소에서 Claude Code를 열어요.
-2. "발표 자료 만들자"라고 말하거나 `/jungle-deck`을 입력해요.
+2. `/jungle-deck`을 입력해요. 스킬은 이 명령으로만 시작하고, 말로는 시작하지 않아요.
 3. 스킬이 먼저 Python을 확인하고 두 가지를 물어요. 발표 자료에 표시할 이름과 공부 노트 사이트예요. 둘 다 비워 둘 수 있어요. 다른 설정은 어떤 단계에서 처음 필요할 때 물어요.
 4. 스킬이 "이번 주 발표 자료를 어디에 저장할까요?"라고 물어요. 기본값은 `<현재 폴더>/<slug>/`예요. 그 폴더에 `BRIEF.md`를 만들고 `grill` 단계를 시작해요.
 
 스킬은 `grill → design → build → revise → publish → done` 순서로 움직이고, 진행 상태를 `BRIEF.md`에 남겨요. 그래서 언제든 멈췄다가 이어갈 수 있어요. 각 단계에서 무엇을 묻는지는 `docs/MANUAL.md`에 있어요.
 
-이어서 하려면 "jungle-deck 이어서"라고 말하고, 게시하려면 "발표 자료 게시"라고 말하세요. 예전 표현인 "발표 덱"과 "덱 게시"도 그대로 돼요.
+새 세션에서 이어서 하려면 `/jungle-deck 이어서`를 입력하세요. 스킬이 실행 중일 때는 "발표 자료 게시"라고 말하면 게시 단계로 넘어가요.
 
 ## 설정
 
