@@ -60,6 +60,7 @@ import math
 import re
 import sys
 from pathlib import Path
+from typing import Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSET_DIR = ROOT / "skills/diagram-design/assets"
@@ -160,7 +161,7 @@ def number(attrs: str, name: str) -> float | None:
         return None
 
 
-Segment = tuple[str, float, float, float, float]  # (kind, x1, y1, x2, y2)
+Segment = Tuple[str, float, float, float, float]  # (kind, x1, y1, x2, y2)
 
 
 CHORD_LENGTH = 2.0  # curves are flattened into chords about this long
@@ -305,7 +306,7 @@ def path_segments(d: str) -> list[Segment] | None:
     return segments
 
 
-Offset = tuple[float, float]
+Offset = Tuple[float, float]
 DEFINITION_TAGS = {"defs", "symbol", "marker", "pattern", "clippath", "mask"}
 
 

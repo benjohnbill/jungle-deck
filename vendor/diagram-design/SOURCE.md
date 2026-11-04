@@ -1,8 +1,9 @@
 # Source
 
 These files are copied from diagram-design by Cathryn Lavery, under the MIT
-License in `LICENSE` beside this note. `SKILL.md` is the only edited file.
-Every other file is byte-identical to upstream.
+License in `LICENSE` beside this note. `SKILL.md` and
+`scripts/verify-geometry.py` are the only edited files. Every other file is
+byte-identical to upstream.
 
 - Upstream: https://github.com/cathrynlavery/diagram-design
 - Version: 2.6.120, commit 0b9b10cab3dbf695642fa1a6c4b4f60df9083689
@@ -19,7 +20,11 @@ Every other file is byte-identical to upstream.
 - From the repository root: `LICENSE`, `scripts/verify-geometry.py`
 - Edited: `SKILL.md`. The routing tables keep only the bundled types,
   pointers to files that are not here are removed, and the section
-  "Slide-scale overrides (jungle-deck)" replaces the style-guide gate.
+  "Slide-scale overrides (jungle-deck)" replaces the style-guide gate. Each
+  `python3` command is `<python_cmd>`, the working command in
+  `jungle-deck.local.md`.
+- Edited: `scripts/verify-geometry.py`. The `Segment` and `Offset` aliases use
+  `typing.Tuple`, because `tuple[...]` at module level crashes on Python 3.8.
 
 `type-architecture.md` is here only for two sections that
 `primitives-core.md` relies on: Connector style (the elbow path) and Crossing
@@ -34,7 +39,8 @@ checked file contains a `<script>`. The Verify step checks a script-free
 extract, so that template is not bundled.
 
 To update, copy the same files from a newer upstream version, re-apply the
-`SKILL.md` edits, and change the version above.
+edits above, and change the version above. `tests/test_vendor_diagram.py` runs
+both scripts on every bundled example.
 
 ## Not bundled
 

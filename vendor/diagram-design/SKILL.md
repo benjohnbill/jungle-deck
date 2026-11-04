@@ -89,7 +89,7 @@ Make each label mask 4 taller than its text and as wide as the `style-guide.md` 
 - Write the remaining count inside the remaining part when it fits (`5개 남음`), mono 14 or more. Write `done / total` at the bar end.
 - Group rows by status with brackets in the right margin, named by state: `다 끝남`, `진행 중`, `남은 일`.
 
-**Verify.** Copy the slot's `<svg>…</svg>` alone into a temporary `.html` file next to the deck. Run `python3 <this folder>/scripts/self_check.py <tmp>` and `python3 <this folder>/scripts/verify-geometry.py <tmp>`. Both must pass. Then delete the temporary file. Run them on the extract only: on the whole deck, `scripts/self_check.py` fails by design, because the stage runtime is a `<script>`.
+**Verify.** Copy the slot's `<svg>…</svg>` alone into a temporary `.html` file next to the deck. Run `<python_cmd> <this folder>/scripts/self_check.py <tmp>` and `<python_cmd> <this folder>/scripts/verify-geometry.py <tmp>`. `<python_cmd>` is the `python_cmd` value in `jungle-deck.local.md`. Use it also where a bundled reference writes `python3`. Both must pass. Then delete the temporary file. Run them on the extract only: on the whole deck, `scripts/self_check.py` fails by design, because the stage runtime is a `<script>`.
 
 ---
 
@@ -237,7 +237,7 @@ Non-negotiable, and §9 checks each one. Full text and edge cases: [primitives-c
 3. **No overlaps.** No shared or stacked strokes: offset parallel routes by 12px or more, and use the bridge/hop at a single crossing.
 4. **Fan attach points.** Connectors on one box edge each get their own point at `L * k / (N + 1)`, 12px or more apart (8px on very small boxes).
 5. **No transit behind a non-endpoint box.** Reroute. Only when the box is geometrically unavoidable: dashed stroke (`4,3`), label at the visible end, no marker on the intervening box.
-6. **Mask before node.** A label mask must not overlap a node drawn after it; badge masks fully inside a node and masks over earlier zones are fine. Verify with `python3 scripts/verify-geometry.py <file>` from this folder.
+6. **Mask before node.** A label mask must not overlap a node drawn after it; badge masks fully inside a node and masks over earlier zones are fine. Verify with `<python_cmd> scripts/verify-geometry.py <file>` from this folder.
 
 ---
 
@@ -303,14 +303,14 @@ Run before producing any diagram.
 - [ ] **§6 rule 3:** no overlapping or stacked connectors; bridge/hop at crossings?
 - [ ] **§6 rule 4:** a distinct attach point per connector on a shared edge, 12px or more apart, none hiding another?
 - [ ] **§6 rule 5:** no transit behind a non-endpoint box, except the unavoidable case (dashed, label at the visible end)?
-- [ ] **§6 rule 6:** no label mask overlapping a node drawn after it? (Run `python3 scripts/verify-geometry.py <file>` from this folder.)
+- [ ] **§6 rule 6:** no label mask overlapping a node drawn after it? (Run `<python_cmd> scripts/verify-geometry.py <file>` from this folder.)
 - [ ] Every arrow label has an opaque `{paper}` rect behind it?
 - [ ] Legend is a horizontal bottom strip, not floating?
 - [ ] No vertical `writing-mode` text?
 - [ ] `viewBox` expanded for the legend strip (~60px)?
 - [ ] SVG sized per the slide-scale overrides (`width:100%; max-height:70vh`), with no `min-width` and no scroll wrapper?
 - [ ] Node origins, dimensions, gaps, padding on the 4px grid; type sizes on the role ramp?
-- [ ] From the installed skill directory, did `python3 scripts/self_check.py <file>` pass? (Accessible-SVG contract, single-file safety, content inside the viewBox, motion basics.)
+- [ ] From the installed skill directory, did `<python_cmd> scripts/self_check.py <file>` pass? (Accessible-SVG contract, single-file safety, content inside the viewBox, motion basics.)
 - [ ] Step reveal per the slide-scale overrides: each beat in a `<g data-step>` in the notes' order, with no `transform` attribute on the stepped group itself?
 
 **Typography:**
