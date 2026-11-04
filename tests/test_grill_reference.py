@@ -180,7 +180,7 @@ class ContextReferenceTest(unittest.TestCase):
 
     def test_no_personal_rows(self):
         lower = self.text.lower()
-        for banned in ["github.io", "오라버니"]:  # the author name: test_author_values
+        for banned in ["github.io", "오라" "버니"]:  # split so the name itself never ships
             self.assertNotIn(banned, lower, f"personal value '{banned}' leaked")
         for row in ["Speaker", "Format", "Deadline"]:
             self.assertNotRegex(self.text, rf"(?m)^\| {row}", f"personal row '{row}'")
