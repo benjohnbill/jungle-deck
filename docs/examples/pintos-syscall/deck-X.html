@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pintos 시스템 콜</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2312201F'/%3E%3Ctext x='16' y='23' font-size='19' font-family='monospace' font-weight='700' text-anchor='middle' fill='%234FC5B3'%3EJ%3C/text%3E%3C/svg%3E">
+<meta name="description" content="write() 한 줄이 커널에 닿고 돌아오기까지">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pintos 시스템 콜">
+<meta property="og:description" content="write() 한 줄이 커널에 닿고 돌아오기까지">
+
+<!--
+  Default fonts (optional). The style comes from the student's DESIGN.md, or
+  from frontend-slides style discovery when there is none. To use the author's
+  default, uncomment these lines and the IBM Plex tokens in :root below.
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+-->
+
+<!--
+  Stage runtime (jungle-deck templates/stage.html)
+
+  Keys
+    → / Space / PageDown : next step on this slide; after the last step, next slide
+    ← / PageUp           : hide the last step; with none shown, previous slide
+    N                    : toggle the speaker-notes panel
+    ?                    : shortcut overlay (Esc or ? closes it)
+    E (or top-left corner): edit mode; click slide text or notes to change it
+    Tab (editing)        : size toolbar for the selected text (← → choose, Esc back)
+    Ctrl+S               : save. Served by scripts/serve.py: write the changed slides
+                           into the source file. Opened as a file: download the deck
+    R                    : reload after an agent edit (only while its notice shows)
+    Home / End           : first / last slide
+    #3 at the end of the URL : open slide 3
+
+  Authoring
+    Steps : put data-step="1", "2", ... on elements; they appear in that order
+    Notes : edit <aside class="notes" data-sec="15"> inside each <section>
+            (hidden on the slide). Start a paragraph with <span class="st">▸2</span>
+            to tie it to step 2.
+    Ids   : keep <section id="sN">; saves, autosaves, and the merge-back script
+            match edits by it, never by position.
+    Edit  : the outermost element with text of its own is editable (a <b> inside
+            such a <p> is edited with it). Put data-evidence on real run output to
+            lock it. A box the student may resize has one of the classes panel,
+            card, box, content-box, container, or the attribute data-box. SVG text
+            is locked: draw a diagram the student may edit with HTML boxes.
+-->
+
+<style>
+/* ===========================================
+   1. Theme tokens. Every color lives here.
+   PLACEHOLDER values: the real style comes from the Design section of
+   BRIEF.md. A style source sets only the base tokens (--paper, --ink,
+   --acc, --mut, --panel, --grid) and the fonts; the rest derive from them.
+   =========================================== */
+:root {
+    /* Base tokens */
+    --paper:   #0f0f0f;
+    --ink:     #e8e4df;
+    --acc:     #d4a574;
+    --grid:    #3a3633;
+    --mut:     #9a9590;
+    --panel:   #171615;
+
+    /* Derived tokens: do not set these in a style source */
+    --hl:      color-mix(in srgb, var(--acc) 13%, transparent);  /* code-line highlight fill; the only filled accent */
+    --edit-bg: color-mix(in srgb, var(--acc) 5%, transparent);   /* focused field in edit mode */
+    --dim:     color-mix(in srgb, var(--ink) 50%, var(--paper)); /* code comments, elided lines */
+    --panel-b: var(--ink);
+    --cap-b:   color-mix(in srgb, var(--ink) 25%, transparent);  /* panel caption rule */
+    --shadow:  color-mix(in srgb, var(--ink) 8%, transparent);
+    --scrim:   color-mix(in srgb, var(--ink) 45%, transparent);  /* behind the help overlay */
+
+    /* System fonts by default. Author's default (uncomment with the <link> above):
+    --font-body: 'IBM Plex Sans KR', sans-serif;
+    --font-mono: 'IBM Plex Mono', 'IBM Plex Sans KR', monospace;
+    */
+    --font-body: 'NanumSquare Neo', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    --font-mono: 'D2Coding ligature', 'D2Coding', 'Noto Sans Mono CJK KR', Consolas, monospace;
+
+    /* Type and spacing scale with the viewport (frontend-slides viewport contract) */
+    --title-size: clamp(2.2rem, 4.4vw, 7rem);
+    --h2-size:    clamp(1.35rem, 2.15vw, 3rem);
+    --h3-size:    clamp(1.1rem, 1.6vw, 2.2rem);
+    --body-size:  clamp(0.95rem, 1.2vw, 1.7rem);
+    --small-size: clamp(0.72rem, 0.8vw, 1.15rem);
+    --code-size:  clamp(0.8rem, min(1.1vw, 2vh), 1.65rem);
+
+    --slide-padding: clamp(1rem, 4vw, 4rem);
+    --content-gap:   clamp(0.5rem, 1.8vh, 1.6rem);
+    --element-gap:   clamp(0.25rem, 1vw, 1rem);
+
+    /* Size steps the student sets in edit mode, ±2 around the template size (one place) */
+    --jd-t-s2: .75;  --jd-t-s1: .875;  --jd-t-l1: 1.25;  --jd-t-l2: 1.5;    /* text size */
+    --jd-w-s2: .75;  --jd-w-s1: .875;  --jd-w-l1: 1.125; --jd-w-l2: 1.25;   /* box width */
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur:  0.5s;
+}
+
+/* ===========================================
+   2. Viewport contract, from vendor/frontend-slides/viewport-base.css.
+   The scroll-snap rules are left out: the stage shows one fixed slide at a time.
+   =========================================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+}
+
+.slide {
+    position: fixed; inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;   /* dynamic viewport height for mobile browsers */
+    display: flex; flex-direction: column;
+    overflow: hidden; /* never let a slide scroll */
+}
+.slide-content {
+    flex: 1; min-height: 0; max-height: 100%;
+    display: flex; flex-direction: column; justify-content: center;
+    overflow: hidden;
+    gap: var(--content-gap);
+    padding: clamp(.5rem, 1.4vh, 1.1rem) var(--slide-padding);
+    position: relative; z-index: 2;
+}
+.card, .container, .content-box {
+    max-width: min(90vw, 1000px);
+    max-height: min(80vh, 700px);
+}
+.feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+.feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+img, .image-container {
+    max-width: 100%;
+    max-height: min(50vh, 400px);
+    object-fit: contain;
+}
+
+/* Short viewports (< 700px height) */
+@media (max-height: 700px) {
+    :root {
+        --slide-padding: clamp(0.75rem, 3vw, 2rem);
+        --content-gap:   clamp(.35rem, 1.2vh, .8rem);
+        --title-size:    clamp(1.4rem, 4.2vw, 2.6rem);
+        --h2-size:       clamp(1.05rem, 2.6vw, 1.8rem);
+    }
+}
+/* Very short viewports (< 600px height) */
+@media (max-height: 600px) {
+    :root {
+        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+        --content-gap:   clamp(0.3rem, 1vw, 0.75rem);
+        --title-size:    clamp(1.1rem, 4vw, 2rem);
+        --body-size:     clamp(0.7rem, 1.2vw, 0.95rem);
+    }
+    /* Hide non-essential elements */
+    .nav-dots, .keyboard-hint, .decorative { display: none; }
+}
+/* Extremely short (landscape phones, < 500px height) */
+@media (max-height: 500px) {
+    :root {
+        --slide-padding: clamp(0.4rem, 2vw, 1rem);
+        --title-size:    clamp(1rem, 3.5vw, 1.5rem);
+        --h2-size:       clamp(0.9rem, 2.5vw, 1.25rem);
+        --body-size:     clamp(0.65rem, 1vw, 0.85rem);
+    }
+}
+/* Narrow viewports (< 600px width) */
+@media (max-width: 600px) {
+    :root { --title-size: clamp(1.3rem, 7vw, 2.4rem); }
+    .grid, .panels { grid-template-columns: 1fr !important; }
+}
+
+/* ===========================================
+   3. Stage: one slide visible at a time
+   =========================================== */
+.slide {
+    background: var(--paper);
+    opacity: 0; visibility: hidden;
+    transition: opacity .35s ease, visibility 0s linear .35s;
+}
+.slide.active {
+    opacity: 1; visibility: visible; z-index: 2;
+    transition: opacity .35s ease, visibility 0s;
+}
+/* The leaving slide does not fade; it stays underneath. If both slides were
+   half-transparent at once, lines in the same place (head rule, grid) would
+   dim and come back. */
+.slide.leaving {
+    opacity: 1; visibility: visible; z-index: 1;
+    transition: none;
+}
+/* Background 12-column grid */
+.slide::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(90deg, var(--grid) 0 1px, transparent 1px 8.3333%);
+    opacity: .6; z-index: 0;
+}
+
+/* Head and foot bands */
+.head {
+    position: relative; z-index: 2;
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 2px solid var(--ink);
+    padding: clamp(1rem, 3.2vh, 2.4rem) var(--slide-padding) clamp(.4rem, 1vh, .7rem);
+    font-family: var(--font-mono); font-size: var(--small-size); color: var(--mut);
+}
+.head .num { letter-spacing: .1em; }
+.foot {
+    position: relative; z-index: 2;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--ink);
+    margin: 0 var(--slide-padding) clamp(1rem, 3vh, 2.2rem);
+    padding-top: clamp(.35rem, 1vh, .6rem);
+    font-family: var(--font-mono); font-size: var(--small-size); color: var(--mut);
+}
+
+h1, h2, p, li, td, .foot span, .head span { word-break: keep-all; text-wrap: pretty; }
+h1, h2 { text-wrap: balance; }
+
+/* ===========================================
+   4. Text elements
+   =========================================== */
+h1 {
+    font-weight: 700; line-height: 1.22; letter-spacing: -.02em;
+    font-size: var(--title-size); max-width: 20ch;
+}
+h1 em, h2 em { font-style: normal; color: var(--acc); }
+h2 {
+    font-weight: 700; line-height: 1.3; letter-spacing: -.015em;
+    font-size: var(--h2-size); max-width: 34ch;
+}
+.kicker {
+    align-self: flex-start;
+    font-family: var(--font-mono); font-size: var(--small-size);
+    letter-spacing: .2em; text-transform: uppercase;
+    color: var(--acc); border: 1.5px solid var(--acc); padding: .3em .7em;
+}
+.rule { width: clamp(70px, 9vw, 180px); height: clamp(6px, .55vw, 12px); background: var(--ink); }
+
+/* One-line conclusion */
+.punch {
+    font-size: clamp(1rem, 1.3vw, 1.9rem); font-weight: 500; line-height: 1.5;
+    max-width: 62ch;
+}
+.punch::before {
+    content: ""; display: inline-block; width: .6em; height: .6em;
+    background: var(--acc); margin-right: .55em; vertical-align: .02em;
+}
+.punch b { color: var(--acc); font-weight: 700; }
+.punch code, .rows code, .hint code { font-family: var(--font-mono); font-weight: 600; }
+.hint {
+    font-size: var(--small-size); color: var(--mut); line-height: 1.55;
+    margin-top: .25em; padding-left: 1.15em;
+}
+.ask { font-size: clamp(1.2rem, 1.7vw, 2.4rem); font-weight: 700; }
+
+/* ===========================================
+   5. Code panels: code, debugger, and compiler output share one light panel
+   =========================================== */
+.panels {
+    display: grid; gap: clamp(.6rem, 1.6vw, 1.4rem);
+    grid-template-columns: 1fr 1fr; align-items: start;
+}
+.panel {
+    border: 2px solid var(--panel-b);
+    background: var(--panel);
+    min-width: 0; overflow: hidden;
+}
+.panel.accent { border-color: var(--acc); }
+/* Panel caption: light, no dark band */
+.cap {
+    display: flex; justify-content: space-between; gap: .8em;
+    font-family: var(--font-mono); font-size: var(--small-size); font-weight: 500;
+    letter-spacing: .04em; color: var(--mut);
+    padding: .4em .8em; border-bottom: 1.5px solid var(--cap-b);
+}
+.cap .side { color: var(--acc); }
+pre {
+    font-family: var(--font-mono); font-size: var(--code-size);
+    line-height: 1.55; white-space: pre; tab-size: 4;
+    padding: clamp(.5rem, 1.4vh, 1rem) clamp(.7rem, 1.3vw, 1.2rem);
+    overflow: hidden;
+}
+pre.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.c-hit { color: var(--acc); font-weight: 600; }
+.c-com, .c-dim { color: var(--dim); }
+.hl { background: var(--hl); color: var(--acc); font-weight: 600; display: block; }
+.hl .c-com { color: var(--acc); opacity: .75; }
+
+/* Comparison table */
+.rows {
+    border-collapse: collapse; background: var(--paper);
+    font-size: clamp(.9rem, 1.15vw, 1.7rem);
+}
+.rows th, .rows td { border: 2px solid var(--ink); padding: .45em .9em; text-align: left; vertical-align: top; }
+.rows th { font-family: var(--font-mono); font-weight: 500; font-size: var(--small-size); letter-spacing: .06em; color: var(--mut); }
+.rows tr.hit td { color: var(--acc); font-weight: 600; }
+
+.closing h1 { max-width: none; text-wrap: wrap; font-size: clamp(1.8rem, 3.3vw, 5.2rem); }
+.closing h1 + h1 { color: var(--acc); }
+.thanks { font-family: var(--font-mono); font-size: var(--body-size); color: var(--mut); }
+
+/* ===========================================
+   6. Step reveal: space is reserved, only visibility changes (no layout jump)
+   =========================================== */
+[data-step] {
+    opacity: 0; visibility: hidden; transform: translateY(14px);
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility 0s linear var(--dur);
+}
+[data-step].on {
+    opacity: 1; visibility: visible; transform: none;
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; transition-delay: 0s !important; animation-duration: .01ms !important; }
+    [data-step] { transform: none; }
+}
+
+/* ===========================================
+   7. Speaker notes: N key, hidden by default
+   =========================================== */
+aside.notes { display: none; }
+#notesPanel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9997;
+    max-height: 42vh; overflow: auto;
+    background: var(--paper); border-top: 2px solid var(--ink);
+    box-shadow: 0 -8px 24px var(--shadow);
+    padding: clamp(.7rem, 1.6vh, 1.2rem) var(--slide-padding);
+}
+#notesPanel[hidden] { display: none; }
+#notesPanel .meta {
+    display: flex; gap: 1.4em; flex-wrap: wrap;
+    font-family: var(--font-mono); font-size: var(--small-size); color: var(--mut);
+    margin-bottom: .5em;
+}
+#notesPanel .meta b { color: var(--acc); font-weight: 600; }
+#notesPanel .body { font-size: clamp(1rem, 1.25vw, 1.6rem); line-height: 1.65; }
+#notesPanel .body p + p { margin-top: .35em; }
+#notesPanel .body .st { font-family: var(--font-mono); color: var(--acc); font-weight: 600; margin-right: .4em; }
+
+/* Progress bar, nav dots, key hint */
+.progress-bar {
+    position: fixed; top: 0; left: 0; height: 4px; width: 100%;
+    background: var(--acc); z-index: 9999;
+    transform: scaleX(0); transform-origin: left center; transition: transform .2s linear;
+}
+.nav-dots {
+    position: fixed; right: clamp(.6rem, 1.4vw, 1.4rem); top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: .55rem; z-index: 9998;
+}
+.nav-dots button {
+    width: 9px; height: 9px; padding: 0; border: 1.5px solid var(--ink);
+    background: transparent; border-radius: 50%; cursor: pointer;
+}
+.nav-dots button.active { background: var(--acc); border-color: var(--acc); transform: scale(1.35); }
+.keyboard-hint {
+    position: fixed; left: clamp(.6rem,1.4vw,1.4rem); bottom: clamp(.4rem,1vh,.8rem);
+    font-family: var(--font-mono); font-size: clamp(.55rem,1vh,.72rem); color: var(--mut);
+    z-index: 9998; opacity: .75; animation: hint-out .5s 5s forwards;
+}
+@keyframes hint-out { to { opacity: 0; visibility: hidden; } }
+
+/* ===========================================
+   8. In-browser edit mode: E key or the top-left corner
+   =========================================== */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; }
+.edit-toggle {
+    position: fixed; top: 14px; left: 14px;
+    width: 42px; height: 42px; border: 2px solid var(--ink);
+    background: var(--paper); border-radius: 50%; cursor: pointer;
+    font-size: 17px; line-height: 1;
+    opacity: 0; pointer-events: none; transition: opacity .3s ease;
+    z-index: 10001;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--acc); border-color: var(--acc); }
+.edit-banner {
+    position: fixed; top: 4px; left: 0; right: 0;
+    background: var(--ink); color: var(--paper);
+    font-family: var(--font-mono); font-size: clamp(.6rem,1.1vh,.78rem);
+    padding: .45em 1em; text-align: center;
+    transform: translateY(-120%); transition: transform .3s var(--ease);
+    z-index: 10000;
+}
+body.edit-active .edit-banner { transform: none; }
+/* While editing, show every step so hidden text can be edited too */
+body.edit-active [data-step] { opacity: 1; visibility: visible; transform: none; }
+body.edit-active [contenteditable] { outline: 1px dashed var(--acc); outline-offset: 3px; }
+body.edit-active [contenteditable]:focus { outline: 2px solid var(--acc); background: var(--edit-bg); }
+/* Way back to the study index. publish.py rewrites the href to one ../ per folder below pages_dir, or drops the link when pages_dir has no index.html. Bottom-right is the only corner the deck chrome leaves free */
+.home-link {
+    position: fixed; right: clamp(.6rem,1.4vw,1.4rem); bottom: clamp(.4rem,1vh,.8rem); z-index: 9998;
+    font-family: var(--font-mono, monospace); font-size: clamp(.55rem,1vh,.72rem);
+    color: var(--mut); text-decoration: none; opacity: .75;
+}
+.home-link:hover { opacity: 1; text-decoration: underline; }
+
+/* ===========================================
+   9. Usage guidance: ? overlay and a one-time hint on first open
+   =========================================== */
+#helpOverlay {
+    position: fixed; inset: 0; z-index: 10002;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--scrim);
+}
+#helpOverlay[hidden], #firstHint[hidden] { display: none; }
+#helpOverlay .help-box {
+    background: var(--paper); color: var(--ink);
+    border: 2px solid var(--ink); box-shadow: 0 12px 32px var(--shadow);
+    padding: clamp(1rem, 2.4vh, 1.8rem) clamp(1.2rem, 2.4vw, 2.2rem);
+    max-width: min(90vw, 560px); max-height: 90vh; overflow: auto;
+}
+#helpOverlay h2 { font-size: var(--h3-size); margin-bottom: .6em; }
+#helpOverlay dl {
+    display: grid; grid-template-columns: max-content 1fr; gap: .35em 1.2em;
+    font-size: var(--small-size); line-height: 1.5;
+}
+#helpOverlay dt { font-family: var(--font-mono); font-weight: 600; color: var(--acc); }
+.help-save { margin-top: .9em; font-size: var(--small-size); font-weight: 600; word-break: keep-all; }
+#firstHint {
+    position: fixed; left: 50%; bottom: clamp(3.6rem, 11vh, 6.5rem); transform: translateX(-50%);
+    z-index: 10000; max-width: min(92vw, 640px);
+    background: var(--ink); color: var(--paper);
+    font-size: var(--small-size); line-height: 1.5; word-break: keep-all;
+    padding: .6em 1em; cursor: pointer;
+}
+
+/* ===========================================
+   10. Save and change notices (served mode, autosave)
+   =========================================== */
+#notices {
+    position: fixed; left: 50%; top: clamp(2.4rem, 6vh, 3.4rem); transform: translateX(-50%);
+    z-index: 10001; width: max-content; max-width: min(92vw, 720px);
+    display: flex; flex-direction: column; gap: .4em; pointer-events: none;
+}
+.notice {
+    pointer-events: auto;
+    background: var(--ink); color: var(--paper); box-shadow: 0 8px 24px var(--shadow);
+    border-left: .35em solid var(--acc);
+    font-size: var(--small-size); line-height: 1.5; word-break: keep-all;
+    padding: .55em 1em;
+}
+.notice button, #sizeBar button {
+    margin-left: .7em; padding: .1em .7em; border: 0; cursor: pointer;
+    font: inherit; font-weight: 600; background: var(--paper); color: var(--ink);
+}
+
+/* ===========================================
+   11. Size steps the student sets in edit mode (saved with the slide)
+   Text steps scale the element's own size with zoom: a font-size in em would
+   scale the parent's size, and each element sets its own size token.
+   Width steps scale the box's own width; the script measures it and writes
+   --box-w (never saved), clamped so the box stays on the slide and off
+   its neighbours.
+   =========================================== */
+.jd-t-s2 { zoom: var(--jd-t-s2); }
+.jd-t-s1 { zoom: var(--jd-t-s1); }
+.jd-t-l1 { zoom: var(--jd-t-l1); }
+.jd-t-l2 { zoom: var(--jd-t-l2); }
+.slide [style*="--box-w"] { width: var(--box-w); max-width: none; }
+#sizeBar {
+    position: fixed; z-index: 10001; display: flex; gap: .3em;
+    background: var(--ink); color: var(--paper); box-shadow: 0 8px 24px var(--shadow);
+    font-size: var(--small-size); padding: .3em;
+}
+#sizeBar[hidden], #sizeBar button[hidden] { display: none; }
+#sizeBar button { margin-left: 0; padding: .15em .6em; }
+#sizeBar button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+/* ===========================================
+   12. Overflow marks: text that does not fit its box or its slide.
+   Shown in edit mode, where the student can act on them. The page never
+   fixes the layout itself. jd-measure holds steps in place while measuring
+   =========================================== */
+body.edit-active [data-jd-over], body.edit-active [data-jd-over]:focus {
+    outline: 3px solid var(--ink); outline-offset: 2px;
+    background-image: repeating-linear-gradient(45deg, var(--hl) 0 6px, transparent 6px 12px);
+}
+body.jd-measure [data-step] { transform: none; transition: none; }
+
+/* ===========================================
+   Figure slides: one thesis line, the figure takes the rest
+   =========================================== */
+.figure-slide .slide-content { justify-content: flex-start; padding-top: clamp(.6rem, 2vh, 1.6rem); }
+.figure-slide .thesis { color: var(--mut); font-size: var(--body-size); line-height: 1.45; max-width: 70ch; }
+.figure-slot {
+    flex: 1; min-height: 0; max-height: 70vh; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+}
+.figure-slot > svg { width: 100%; height: 100%; }
+</style>
+<style>* { font-variant-ligatures: none }</style></head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots" aria-label="슬라이드 이동"></nav>
+<div class="keyboard-hint">→ 다음 단계 · ← 이전 · N 발표자 노트 · E 편집 · Ctrl+S 저장 · ? 도움말</div>
+
+<div class="edit-hotzone" aria-hidden="true"></div>
+<button class="edit-toggle" id="editToggle" title="편집 모드 (E)" aria-label="편집 모드 켜기">✏️</button>
+<div class="edit-banner" id="editBanner">편집 모드 · 글자를 눌러 고치세요 · Tab 크기 조절 · N 노트도 고칠 수 있어요 · Esc 커서 빼기 · Ctrl+S 저장 · E 끄기</div>
+
+<!-- ============================================================
+     01 · Title
+     ============================================================ -->
+<section class="slide" id="s1">
+    <div class="head"><span>Pintos · 시스템 콜</span><span class="num"></span></div>
+    <div class="slide-content">
+        <span class="kicker">KAIST Pintos · Project 2</span>
+        <h1>유저에서 커널로, <em>시스템 콜</em>의 길</h1>
+        <p class="ask">write() 한 줄이 syscall 명령어를 지나 syscall_handler에 닿고, 다시 돌아오기까지</p>
+    </div>
+    <div class="foot"><span>userprog/syscall.c</span></div>
+    <aside class="notes" data-sec="20">
+        <p>printf 한 줄이 실제로 어떤 길을 지나 화면에 찍히는지 따라가 본다고 연다.</p>
+    </aside>
+</section>
+
+<section class="slide figure-slide" id="s2">
+    <div class="head"><span>흐름 · 호출 순서</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h2>write() 한 번의 왕복</h2>
+        <p class="thesis">유저 영역의 래퍼가 레지스터에 인자를 싣고, syscall 명령어 한 번으로 커널에 들어갔다 돌아온다</p>
+        <div class="figure-slot" id="slot-sequence">
+<svg viewBox="0 0 1200 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="slot-sequence-title slot-sequence-desc" style="width:100%; max-height:70vh; display:block">
+<title id="slot-sequence-title">write() 한 번의 왕복</title>
+<desc id="slot-sequence-desc">유저 프로그램의 write 호출이 래퍼에서 레지스터에 인자를 싣고 syscall 명령어로 커널의 syscall_entry와 syscall_handler를 거쳐 putbuf 또는 file_write로 쓴 뒤, sysretq로 유저 모드에 돌아와 rax에 담긴 바이트 수를 돌려받는 순서.</desc>
+<defs>
+<marker id="slot-sequence-arrow" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><polygon points="0 0, 12 5, 0 10" fill="var(--mut)"/></marker>
+<marker id="slot-sequence-arrow-acc" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="10" refX="11" refY="5" orient="auto"><polygon points="0 0, 12 5, 0 10" fill="var(--acc)"/></marker>
+</defs>
+<g data-step="1">
+<line x1="80" y1="68" x2="80" y2="436" stroke="var(--mut)" stroke-width="1.5" stroke-dasharray="4,4"/>
+<line x1="320" y1="68" x2="320" y2="436" stroke="var(--mut)" stroke-width="1.5" stroke-dasharray="4,4"/>
+<line x1="566" y1="68" x2="566" y2="436" stroke="var(--mut)" stroke-width="1.5" stroke-dasharray="4,4"/>
+<line x1="816" y1="68" x2="816" y2="436" stroke="var(--mut)" stroke-width="1.5" stroke-dasharray="4,4"/>
+<line x1="1100" y1="68" x2="1100" y2="436" stroke="var(--mut)" stroke-width="1.5" stroke-dasharray="4,4"/>
+<line x1="432" y1="0" x2="432" y2="440" stroke="var(--acc)" stroke-width="2" stroke-dasharray="10,6"/>
+<text x="420" y="428" font-size="14" font-weight="600" fill="var(--acc)" text-anchor="end"><tspan font-family="var(--font-body)">← 유저 영역</tspan></text>
+<text x="444" y="428" font-size="14" font-weight="600" fill="var(--acc)" text-anchor="start"><tspan font-family="var(--font-body)">커널 영역 →</tspan></text>
+<rect x="16" y="4" width="128" height="64" rx="6" fill="var(--paper)"/><rect x="16" y="4" width="128" height="64" rx="6" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--ink)" stroke-width="2"/><text x="80" y="32" font-size="16" font-weight="600" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-body)">유저 프로그램</tspan></text><text x="80" y="56" font-size="14" fill="var(--mut)" text-anchor="middle"><tspan font-family="var(--font-mono)">main</tspan></text>
+<rect x="232" y="4" width="176" height="64" rx="6" fill="var(--paper)"/><rect x="232" y="4" width="176" height="64" rx="6" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--ink)" stroke-width="2"/><text x="320" y="32" font-size="16" font-weight="600" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">write</tspan><tspan font-family="var(--font-body)"> 래퍼</tspan></text><text x="320" y="56" font-size="14" fill="var(--mut)" text-anchor="middle"><tspan font-family="var(--font-mono)">lib/user/syscall.c</tspan></text>
+<rect x="452" y="4" width="228" height="64" rx="6" fill="var(--paper)"/><rect x="452" y="4" width="228" height="64" rx="6" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--ink)" stroke-width="2"/><text x="566" y="32" font-size="16" font-weight="600" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">syscall_entry</tspan></text><text x="566" y="56" font-size="14" fill="var(--mut)" text-anchor="middle"><tspan font-family="var(--font-mono)">userprog/syscall-entry.S</tspan></text>
+<rect x="728" y="4" width="176" height="64" rx="6" fill="var(--paper)"/><rect x="728" y="4" width="176" height="64" rx="6" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--ink)" stroke-width="2"/><text x="816" y="32" font-size="16" font-weight="600" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">syscall_handler</tspan></text><text x="816" y="56" font-size="14" fill="var(--mut)" text-anchor="middle"><tspan font-family="var(--font-mono)">userprog/syscall.c</tspan></text>
+<rect x="1004" y="4" width="192" height="64" rx="6" fill="var(--paper)"/><rect x="1004" y="4" width="192" height="64" rx="6" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--ink)" stroke-width="2"/><text x="1100" y="32" font-size="16" font-weight="600" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-body)">콘솔 · 파일 시스템</tspan></text><text x="1100" y="56" font-size="14" fill="var(--mut)" text-anchor="middle"><tspan font-family="var(--font-mono)">putbuf / file_write</tspan></text>
+</g>
+<g data-step="2">
+<rect x="76" y="96" width="8" height="336" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="1.5"/>
+<rect x="316" y="104" width="8" height="324" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="1.5"/>
+<line x1="84" y1="104" x2="316" y2="104" stroke="var(--mut)" stroke-width="2" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="104" y="78" width="192" height="18" rx="2" fill="var(--paper)"/>
+<text x="200" y="92" font-size="14" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">write(fd, buf, size)</tspan></text>
+<rect x="140" y="120" width="164" height="152" rx="6" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+<text x="156" y="146" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">rax = SYS_WRITE</tspan></text>
+<text x="156" y="182" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">rdi = fd</tspan></text>
+<text x="156" y="218" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">rsi = buf</tspan></text>
+<text x="156" y="254" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">rdx = size</tspan></text>
+<line x1="324" y1="140" x2="562" y2="140" stroke="var(--acc)" stroke-width="3" marker-end="url(#slot-sequence-arrow-acc)"/>
+<rect x="338" y="114" width="80" height="18" rx="2" fill="var(--paper)"/>
+<text x="378" y="128" font-size="14" font-weight="600" fill="var(--acc)" text-anchor="middle"><tspan font-family="var(--font-mono)">syscall</tspan></text>
+</g>
+<g data-step="3">
+<rect x="562" y="140" width="8" height="72" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="1.5"/>
+<rect x="812" y="212" width="8" height="180" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="1.5"/>
+<path d="M 570 152 H 594 A 8 8 0 0 1 602 160 A 8 8 0 0 1 594 168 H 572" fill="none" stroke="var(--mut)" stroke-width="2" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="604" y="140" width="200" height="40" rx="2" fill="var(--paper)"/>
+<text x="612" y="155" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-body)">유저 </tspan><tspan font-family="var(--font-mono)">rsp</tspan><tspan font-family="var(--font-body)"> 저장 → 커널 스택</tspan></text>
+<text x="612" y="173" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">intr_frame</tspan><tspan font-family="var(--font-body)"> 구성</tspan></text>
+<line x1="570" y1="212" x2="812" y2="212" stroke="var(--mut)" stroke-width="2" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="604" y="186" width="176" height="18" rx="2" fill="var(--paper)"/>
+<text x="692" y="200" font-size="14" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">syscall_handler(f)</tspan></text>
+<path d="M 820 224 H 844 A 8 8 0 0 1 852 232 A 8 8 0 0 1 844 240 H 822" fill="none" stroke="var(--mut)" stroke-width="2" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="856" y="212" width="176" height="40" rx="2" fill="var(--paper)"/>
+<text x="862" y="227" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">f->R.rax</tspan><tspan font-family="var(--font-body)">로 분기</tspan></text>
+<text x="862" y="245" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">check_address(buf)</tspan></text>
+</g>
+<g data-step="4">
+<rect x="1096" y="284" width="8" height="36" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="1.5"/>
+<line x1="820" y1="284" x2="1096" y2="284" stroke="var(--mut)" stroke-width="2" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="832" y="258" width="252" height="18" rx="2" fill="var(--paper)"/>
+<text x="958" y="272" font-size="14" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">fd==1 ? putbuf : file_write</tspan></text>
+<line x1="1096" y1="320" x2="820" y2="320" stroke="var(--mut)" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="908" y="294" width="104" height="18" rx="2" fill="var(--paper)"/>
+<text x="958" y="308" font-size="14" font-weight="500" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-body)">쓴 바이트 수</tspan></text>
+<path d="M 820 332 H 844 A 8 8 0 0 1 852 340 A 8 8 0 0 1 844 348 H 822" fill="none" stroke="var(--mut)" stroke-width="2" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="856" y="332" width="172" height="20" rx="2" fill="var(--paper)"/>
+<text x="862" y="347" font-size="14" fill="var(--ink)" text-anchor="start"><tspan font-family="var(--font-mono)">f->R.rax = </tspan><tspan font-family="var(--font-body)">반환값</tspan></text>
+</g>
+<g data-step="5">
+<line x1="812" y1="392" x2="324" y2="392" stroke="var(--mut)" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="594" y="366" width="192" height="18" rx="2" fill="var(--paper)"/>
+<text x="690" y="380" font-size="14" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">sysretq</tspan><tspan font-family="var(--font-body)"> · 유저 모드 복귀</tspan></text>
+<line x1="316" y1="428" x2="84" y2="428" stroke="var(--mut)" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#slot-sequence-arrow)"/>
+<rect x="116" y="402" width="168" height="18" rx="2" fill="var(--paper)"/>
+<text x="200" y="416" font-size="14" fill="var(--ink)" text-anchor="middle"><tspan font-family="var(--font-mono)">rax</tspan><tspan font-family="var(--font-body)">에 담긴 바이트 수</tspan></text>
+</g>
+</svg>
+</div>
+    </div>
+    <div class="foot"><span>userprog/syscall-entry.S</span><span>도식</span></div>
+    <aside class="notes" data-sec="60">
+        <p>유저와 커널의 경계를 먼저 짚고, 호출을 하나씩 따라간다.</p>
+    </aside>
+</section>
+
+<section class="slide figure-slide" id="s3">
+    <div class="head"><span>분기 · syscall_handler</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h2>syscall_handler의 분기</h2>
+        <p class="thesis">rax 값 하나로 처리 경로가 갈리고, 잘못된 포인터는 exit(-1)로 끝난다</p>
+        <div class="figure-slot" id="slot-dispatch">
+            <svg id="dsp" viewBox="0 0 1200 440" role="img" aria-labelledby="dsp-t"
+                 style="display:block;width:100%;height:auto;max-height:60vh;font-family:var(--font-body)">
+              <title id="dsp-t">syscall_handler가 f-&gt;R.rax로 세 갈래로 나뉘고, SYS_WRITE는 check_address를 통과해야 fd에 따라 putbuf 또는 file_write로 가며, 잘못된 주소는 exit(-1)로 끝난다</title>
+              <style>
+                #dsp text { text-anchor: middle; dominant-baseline: central; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0 }
+                #dsp .dsp-node { fill: var(--panel); stroke: var(--ink); stroke-width: 2px }
+                #dsp .dsp-focal { fill: color-mix(in srgb, var(--acc) 16%, var(--paper)); stroke: var(--acc); stroke-width: 3px }
+                #dsp .dsp-line { fill: none; stroke: var(--mut); stroke-width: 2px }
+                #dsp .dsp-fline { fill: none; stroke: var(--acc); stroke-width: 2px }
+                #dsp .dsp-chip { fill: color-mix(in srgb, var(--ink) 12%, var(--paper)) }
+                #dsp .dsp-chipt { fill: var(--ink); font-size: 15px; font-weight: 600 }
+                #dsp .dsp-name { fill: var(--ink); font-size: 17px; font-weight: 600 }
+                #dsp .dsp-sub { fill: var(--mut); font-size: 15px }
+                #dsp .dsp-code { fill: var(--ink); font-size: 16px; font-family: var(--font-mono) }
+                #dsp .dsp-mono { font-family: var(--font-mono) }
+                #dsp .dsp-ftext { fill: var(--ink); font-weight: 700 }
+              </style>
+              <defs>
+                <marker id="dsp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="12" markerHeight="12"
+                        markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" style="fill:var(--mut)"/>
+                </marker>
+                <marker id="dsp-arrow-acc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="12" markerHeight="12"
+                        markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" style="fill:var(--acc)"/>
+                </marker>
+              </defs>
+
+              <!-- scaffold: entry -->
+              <rect class="dsp-node" x="10" y="38" width="208" height="64" rx="32"/>
+              <text class="dsp-sub" x="114" y="58">진입</text>
+              <text class="dsp-code" x="114" y="82">syscall_handler(f)</text>
+
+              <!-- step 1: rax decision -->
+              <g data-step="1">
+                <path class="dsp-line" d="M114,102 V165" marker-end="url(#dsp-arrow)"/>
+                <polygon class="dsp-node" points="34,220 114,165 194,220 114,275"/>
+                <text class="dsp-name dsp-mono" x="114" y="208">f-&gt;R.rax</text>
+                <text class="dsp-name" x="114" y="232">값은?</text>
+              </g>
+
+              <!-- step 2: three branches -->
+              <g data-step="2">
+                <path class="dsp-line" d="M194,220 H340" marker-end="url(#dsp-arrow)"/>
+                <path class="dsp-line" d="M236,220 V70 H340" marker-end="url(#dsp-arrow)"/>
+                <path class="dsp-line" d="M236,220 V375 H340" marker-end="url(#dsp-arrow)"/>
+                <rect class="dsp-chip" x="244" y="38" width="84" height="24" rx="4"/>
+                <text class="dsp-chipt dsp-mono" x="286" y="50">SYS_HALT</text>
+                <rect class="dsp-chip" x="244" y="188" width="93" height="24" rx="4"/>
+                <text class="dsp-chipt dsp-mono" x="290.5" y="200">SYS_WRITE</text>
+                <rect class="dsp-chip" x="244" y="343" width="84" height="24" rx="4"/>
+                <text class="dsp-chipt dsp-mono" x="286" y="355">SYS_EXIT</text>
+                <rect class="dsp-node" x="340" y="44" width="208" height="52" rx="8"/>
+                <text class="dsp-code" x="444" y="70">power_off()</text>
+                <rect class="dsp-node" x="340" y="194" width="208" height="52" rx="8"/>
+                <text class="dsp-code" x="444" y="220">check_address(buf)</text>
+                <rect class="dsp-node" x="340" y="343" width="208" height="64" rx="8"/>
+                <text class="dsp-sub" x="444" y="363">종료 상태 저장 후</text>
+                <text class="dsp-code" x="444" y="387">thread_exit()</text>
+              </g>
+
+              <!-- step 3: address check and the exit(-1) ending (focal) -->
+              <g data-step="3">
+                <path class="dsp-line" d="M548,220 H604" marker-end="url(#dsp-arrow)"/>
+                <path class="dsp-fline" d="M689,275 V343" marker-end="url(#dsp-arrow-acc)"/>
+                <polygon class="dsp-node" points="604,220 689,165 774,220 689,275"/>
+                <text class="dsp-name" x="689" y="208">유효한</text>
+                <text class="dsp-name" x="689" y="232">유저 주소?</text>
+                <rect class="dsp-chip" x="697" y="297" width="57" height="24" rx="4"/>
+                <text class="dsp-chipt" x="725.5" y="309">아니오</text>
+                <rect class="dsp-focal" x="609" y="343" width="160" height="64" rx="32"/>
+                <text class="dsp-sub" x="689" y="363" style="fill:var(--ink)">프로세스 종료</text>
+                <text class="dsp-code dsp-ftext" x="689" y="387" style="font-size:18px">exit(-1)</text>
+              </g>
+
+              <!-- step 4: fd branch and the return value -->
+              <g data-step="4">
+                <path class="dsp-line" d="M774,220 H830" marker-end="url(#dsp-arrow)"/>
+                <path class="dsp-line" d="M900,175 V96" marker-end="url(#dsp-arrow)"/>
+                <path class="dsp-line" d="M900,265 V343" marker-end="url(#dsp-arrow)"/>
+                <path class="dsp-line" d="M998,70 H1096 V188" marker-end="url(#dsp-arrow)"/>
+                <path class="dsp-line" d="M1025,375 H1096 V252" marker-end="url(#dsp-arrow)"/>
+                <rect class="dsp-chip" x="788" y="188" width="27" height="24" rx="4"/>
+                <text class="dsp-chipt" x="801.5" y="200">예</text>
+                <polygon class="dsp-node" points="830,220 900,175 970,220 900,265"/>
+                <text class="dsp-name dsp-mono" x="900" y="220">fd == 1</text>
+                <rect class="dsp-chip" x="908" y="124" width="27" height="24" rx="4"/>
+                <text class="dsp-chipt" x="921.5" y="136">예</text>
+                <rect class="dsp-chip" x="908" y="292" width="57" height="24" rx="4"/>
+                <text class="dsp-chipt" x="936.5" y="304">아니오</text>
+                <rect class="dsp-node" x="802" y="44" width="196" height="52" rx="8"/>
+                <text class="dsp-code" x="900" y="70">putbuf(buf, size)</text>
+                <rect class="dsp-node" x="817" y="343" width="208" height="64" rx="8"/>
+                <text class="dsp-sub" x="921" y="363">fd 테이블에서 file 조회</text>
+                <text class="dsp-code" x="921" y="387">file_write()</text>
+                <rect class="dsp-node" x="1026" y="188" width="140" height="64" rx="32"/>
+                <text class="dsp-name" x="1096" y="208">반환값 기록</text>
+                <text class="dsp-code" x="1096" y="232">f-&gt;R.rax</text>
+              </g>
+            </svg>
+        </div>
+    </div>
+    <div class="foot"><span>userprog/syscall.c</span><span>도식</span></div>
+    <aside class="notes" data-sec="50">
+        <p>rax로 갈리는 세 갈래를 보이고, 잘못된 포인터의 결말을 강조한다.</p>
+    </aside>
+</section>
+
+<section class="slide figure-slide" id="s4">
+    <div class="head"><span>구조 · 유저 스택</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h2>exec 직후 유저 스택</h2>
+        <p class="thesis">문자열을 먼저 쌓고, 포인터가 그 문자열을 거슬러 가리키며, rsp는 가짜 반환 주소에서 멈춘다</p>
+        <div class="figure-slot" id="slot-stack"><svg viewBox="0 0 1140 556" role="img" aria-label="exec 직후 유저 스택, 예시 주소. USER_STACK 0x47480000에서 아래로 인자 문자열 4개, word-align 패딩, argv[4] NULL 센티널, argv[3]부터 argv[0]까지 위쪽 문자열을 가리키는 포인터, 가짜 반환 주소가 쌓인다. rsp는 가짜 반환 주소 0x4747ffb8, rsi는 argv[0] 0x4747ffc0, rdi는 argc 4." style="color:var(--ink);font-family:var(--font-mono)">
+            <defs>
+                <marker id="stk-arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--acc)"/></marker>
+                <marker id="stk-arr-mut" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--mut)"/></marker>
+            </defs>
+
+            <!-- Frame: column headers and the address axis (always visible) -->
+            <g font-size="13" style="fill:var(--mut)">
+                <text x="400" y="22" text-anchor="end">주소 (예시)</text>
+                <text x="440" y="22">이름</text>
+                <text x="620" y="22">타입</text>
+                <text x="840" y="22" text-anchor="end">값</text>
+            </g>
+            <g font-size="13" text-anchor="middle" style="fill:var(--mut);font-family:var(--font-body)">
+                <text x="1085" y="30">높은 주소</text>
+                <text x="1085" y="544">낮은 주소</text>
+            </g>
+            <line x1="1085" y1="44" x2="1085" y2="522" stroke-width="1.5" marker-end="url(#stk-arr-mut)" style="stroke:var(--mut)"/>
+            <rect x="1045" y="270" width="80" height="24" style="fill:var(--paper)"/>
+            <text x="1085" y="282" font-size="13" text-anchor="middle" dominant-baseline="central" style="fill:var(--mut);font-family:var(--font-body)">쌓는 방향</text>
+
+            <!-- Step 1: USER_STACK and the four argument strings -->
+            <g data-step="1">
+                <text x="410" y="46" text-anchor="end" font-size="14" font-weight="600" fill="currentColor">USER_STACK = 0x47480000</text>
+                <g stroke-width="1.5" style="fill:var(--panel);stroke:var(--ink)">
+                    <rect x="420" y="60" width="440" height="42"/>
+                    <rect x="420" y="102" width="440" height="42"/>
+                    <rect x="420" y="144" width="440" height="42"/>
+                    <rect x="420" y="186" width="440" height="42"/>
+                </g>
+                <line x1="330" y1="60" x2="860" y2="60" stroke="currentColor" stroke-width="3"/>
+                <g font-size="14" text-anchor="end" dominant-baseline="central" style="fill:var(--mut)">
+                    <text x="400" y="81">0x4747fffc</text>
+                    <text x="400" y="123">0x4747fff8</text>
+                    <text x="400" y="165">0x4747fff5</text>
+                    <text x="400" y="207">0x4747ffed</text>
+                </g>
+                <g font-size="15" dominant-baseline="central" fill="currentColor">
+                    <text x="440" y="81">argv[3][...]</text>
+                    <text x="440" y="123">argv[2][...]</text>
+                    <text x="440" y="165">argv[1][...]</text>
+                    <text x="440" y="207">argv[0][...]</text>
+                </g>
+                <g font-size="12.5" dominant-baseline="central" style="fill:var(--mut)">
+                    <text x="620" y="81">char[4]</text>
+                    <text x="620" y="123">char[4]</text>
+                    <text x="620" y="165">char[3]</text>
+                    <text x="620" y="207">char[8]</text>
+                </g>
+                <g font-size="15" text-anchor="end" dominant-baseline="central" fill="currentColor">
+                    <text x="840" y="81">'bar\0'</text>
+                    <text x="840" y="123">'foo\0'</text>
+                    <text x="840" y="165">'-l\0'</text>
+                    <text x="840" y="207">'/bin/ls\0'</text>
+                </g>
+            </g>
+
+            <!-- Step 2: word-align padding -->
+            <g data-step="2" dominant-baseline="central">
+                <rect x="420" y="228" width="440" height="42" stroke-width="1.5" stroke-dasharray="5 4" style="fill:var(--paper);stroke:var(--mut)"/>
+                <text x="400" y="249" font-size="14" text-anchor="end" style="fill:var(--mut)">0x4747ffe8</text>
+                <text x="440" y="249" font-size="15" style="fill:var(--mut)">word-align (패딩)</text>
+                <text x="620" y="249" font-size="12.5" style="fill:var(--mut)">uint8_t[]</text>
+                <text x="840" y="249" font-size="15" text-anchor="end" style="fill:var(--mut)">0</text>
+            </g>
+
+            <!-- Step 3: argv[4] NULL sentinel, argv[3]..argv[0] pointers and their arrows -->
+            <g data-step="3">
+                <g stroke-width="1.5" style="fill:var(--panel);stroke:var(--ink)">
+                    <rect x="420" y="270" width="440" height="42"/>
+                    <rect x="420" y="312" width="440" height="42"/>
+                    <rect x="420" y="354" width="440" height="42"/>
+                    <rect x="420" y="396" width="440" height="42"/>
+                    <rect x="420" y="438" width="440" height="42"/>
+                </g>
+                <g font-size="14" text-anchor="end" dominant-baseline="central" style="fill:var(--mut)">
+                    <text x="400" y="291">0x4747ffe0</text>
+                    <text x="400" y="333">0x4747ffd8</text>
+                    <text x="400" y="375">0x4747ffd0</text>
+                    <text x="400" y="417">0x4747ffc8</text>
+                    <text x="400" y="459">0x4747ffc0</text>
+                </g>
+                <g font-size="15" dominant-baseline="central" fill="currentColor">
+                    <text x="440" y="291">argv[4]</text>
+                    <text x="440" y="333">argv[3]</text>
+                    <text x="440" y="375">argv[2]</text>
+                    <text x="440" y="417">argv[1]</text>
+                    <text x="440" y="459">argv[0]</text>
+                </g>
+                <g font-size="12.5" dominant-baseline="central" style="fill:var(--mut)">
+                    <text x="620" y="291">char *</text>
+                    <text x="620" y="333">char *</text>
+                    <text x="620" y="375">char *</text>
+                    <text x="620" y="417">char *</text>
+                    <text x="620" y="459">char *</text>
+                </g>
+                <g font-size="15" text-anchor="end" dominant-baseline="central">
+                    <text x="840" y="291" style="fill:var(--mut)">0 (NULL 센티널)</text>
+                    <text x="840" y="333" style="fill:var(--acc)">0x4747fffc</text>
+                    <text x="840" y="375" style="fill:var(--acc)">0x4747fff8</text>
+                    <text x="840" y="417" style="fill:var(--acc)">0x4747fff5</text>
+                    <text x="840" y="459" style="fill:var(--acc)">0x4747ffed</text>
+                </g>
+                <!-- Each pointer climbs back to its string. A paper-colored halo under each later arrow bridges the crossings. -->
+                <g fill="none" stroke-linejoin="round">
+                    <path d="M862 459 H890 V207 H866" stroke-width="7" style="stroke:var(--paper)"/>
+                    <path d="M862 459 H890 V207 H866" stroke-width="2" marker-end="url(#stk-arr)" style="stroke:var(--acc)"/>
+                    <path d="M862 417 H920 V165 H866" stroke-width="7" style="stroke:var(--paper)"/>
+                    <path d="M862 417 H920 V165 H866" stroke-width="2" marker-end="url(#stk-arr)" style="stroke:var(--acc)"/>
+                    <path d="M862 375 H950 V123 H866" stroke-width="7" style="stroke:var(--paper)"/>
+                    <path d="M862 375 H950 V123 H866" stroke-width="2" marker-end="url(#stk-arr)" style="stroke:var(--acc)"/>
+                    <path d="M862 333 H980 V81 H866" stroke-width="7" style="stroke:var(--paper)"/>
+                    <path d="M862 333 H980 V81 H866" stroke-width="2" marker-end="url(#stk-arr)" style="stroke:var(--acc)"/>
+                </g>
+                <g style="fill:var(--acc)">
+                    <circle cx="860" cy="459" r="3.5"/>
+                    <circle cx="860" cy="417" r="3.5"/>
+                    <circle cx="860" cy="375" r="3.5"/>
+                    <circle cx="860" cy="333" r="3.5"/>
+                </g>
+            </g>
+
+            <!-- Step 4: fake return address, rsp, and the rdi / rsi registers -->
+            <g data-step="4" dominant-baseline="central">
+                <rect x="420" y="480" width="440" height="42" stroke-width="1.5" style="fill:var(--panel);stroke:var(--ink)"/>
+                <text x="400" y="501" font-size="14" text-anchor="end" style="fill:var(--mut)">0x4747ffb8</text>
+                <text x="440" y="501" font-size="15" fill="currentColor">가짜 반환 주소</text>
+                <text x="620" y="501" font-size="12.5" style="fill:var(--mut)">void (*) ()</text>
+                <text x="840" y="501" font-size="15" text-anchor="end" fill="currentColor">0</text>
+
+                <text x="40" y="384" font-size="13" style="fill:var(--mut);font-family:var(--font-body)">유저 모드 진입 시 레지스터</text>
+                <g stroke-width="1.5" style="fill:var(--panel);stroke:var(--ink)">
+                    <rect x="40" y="401" width="210" height="32"/>
+                    <rect x="40" y="443" width="210" height="32"/>
+                </g>
+                <rect x="40" y="485" width="210" height="32" stroke-width="2.5" style="fill:var(--panel);stroke:var(--acc)"/>
+                <g font-size="15" fill="currentColor">
+                    <text x="56" y="417">rdi = argc = 4</text>
+                    <text x="56" y="459">rsi = &amp;argv[0]</text>
+                    <text x="56" y="501" font-weight="600">rsp</text>
+                </g>
+                <g fill="none" stroke-width="2" style="stroke:var(--acc)">
+                    <path d="M252 459 H314" marker-end="url(#stk-arr)"/>
+                    <path d="M252 501 H314" marker-end="url(#stk-arr)"/>
+                </g>
+            </g>
+        </svg></div>
+    </div>
+    <div class="foot"><span>userprog/process.c</span><span>도식</span></div>
+    <aside class="notes" data-sec="50">
+        <p>USER_STACK에서 아래로 쌓이는 순서대로 설명한다.</p>
+    </aside>
+</section>
+
+<section class="slide figure-slide" id="s5">
+    <div class="head"><span>현황 · 테스트</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h2>테스트 그룹별 통과 현황</h2>
+        <p class="thesis">Project 2 userprog 테스트, 구현 2주차 시점 (예시 데이터)</p>
+        <div class="figure-slot" id="slot-progress">
+            <svg viewBox="0 0 1160 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="slot-progress-title slot-progress-desc" style="width:100%; max-height:70vh; display:block">
+              <title id="slot-progress-title">테스트 그룹별 통과 현황 (예시 데이터)</title>
+              <desc id="slot-progress-desc">userprog 테스트 7개 그룹의 통과 수와 남은 수. args, create, open · close는 모두 통과했고, read · write와 exec · wait는 진행 중이며, fork(3/8)와 bad-*(4/11)가 남은 일이다.</desc>
+              <!-- grid (decoration) -->
+              <line x1="368" y1="8" x2="368" y2="368" stroke="var(--grid)" stroke-width="1" stroke-dasharray="4,4"/>
+              <line x1="536" y1="8" x2="536" y2="368" stroke="var(--grid)" stroke-width="1" stroke-dasharray="4,4"/>
+              <line x1="704" y1="8" x2="704" y2="368" stroke="var(--grid)" stroke-width="1" stroke-dasharray="4,4"/>
+              <line x1="872" y1="8" x2="872" y2="368" stroke="var(--grid)" stroke-width="1" stroke-dasharray="4,4"/>
+              <!-- axes -->
+              <line x1="200" y1="8" x2="200" y2="368" stroke="var(--mut)" stroke-width="2"/>
+              <line x1="200" y1="368" x2="872" y2="368" stroke="var(--mut)" stroke-width="2"/>
+              <text x="200" y="392" fill="var(--mut)" font-size="12" font-family="var(--font-mono)" text-anchor="middle">0</text>
+              <text x="368" y="392" fill="var(--mut)" font-size="12" font-family="var(--font-mono)" text-anchor="middle">4</text>
+              <text x="536" y="392" fill="var(--mut)" font-size="12" font-family="var(--font-mono)" text-anchor="middle">8</text>
+              <text x="704" y="392" fill="var(--mut)" font-size="12" font-family="var(--font-mono)" text-anchor="middle">12</text>
+              <text x="872" y="392" fill="var(--mut)" font-size="12" font-family="var(--font-mono)" text-anchor="middle">16</text>
+              <text x="536" y="424" fill="var(--mut)" font-size="14" font-family="var(--font-body)" text-anchor="middle">테스트 수 (통과 + 남음)</text>
+              <text x="1120" y="424" fill="var(--mut)" font-size="14" font-family="var(--font-body)" text-anchor="end">예시 데이터 · 실제 채점 결과 아님</text>
+              <g data-step="1">
+                <!-- args: 5/5 -->
+                <text x="184" y="36" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-mono)" text-anchor="end">args</text>
+                <rect x="200" y="16" width="210" height="28" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+                <text x="422" y="35" fill="var(--mut)" font-size="14" font-family="var(--font-mono)">5/5</text>
+                <!-- create: 9/9 -->
+                <text x="184" y="80" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-mono)" text-anchor="end">create</text>
+                <rect x="200" y="60" width="378" height="28" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+                <text x="590" y="79" fill="var(--mut)" font-size="14" font-family="var(--font-mono)">9/9</text>
+                <!-- open · close: 12/12 -->
+                <text x="184" y="124" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-mono)" text-anchor="end">open · close</text>
+                <rect x="200" y="104" width="504" height="28" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+                <text x="716" y="123" fill="var(--mut)" font-size="14" font-family="var(--font-mono)">12/12</text>
+                <path d="M940 16 H948 V132 H940" fill="none" stroke="var(--mut)" stroke-width="2"/>
+                <text x="964" y="80" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-body)">다 끝남</text>
+              </g>
+              <g data-step="2">
+                <!-- read · write: 11/16 -->
+                <text x="184" y="192" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-mono)" text-anchor="end">read · write</text>
+                <rect x="200" y="172" width="462" height="28" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+                <rect x="662" y="172" width="210" height="28" fill="var(--paper)" stroke="var(--mut)" stroke-width="2" stroke-dasharray="6,4"/>
+                <text x="767" y="191" fill="var(--mut)" font-size="14" font-weight="600" font-family="var(--font-body)" text-anchor="middle">5개 남음</text>
+                <text x="884" y="191" fill="var(--mut)" font-size="14" font-family="var(--font-mono)">11/16</text>
+                <!-- exec · wait: 9/14 -->
+                <text x="184" y="236" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-mono)" text-anchor="end">exec · wait</text>
+                <rect x="200" y="216" width="378" height="28" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+                <rect x="578" y="216" width="210" height="28" fill="var(--paper)" stroke="var(--mut)" stroke-width="2" stroke-dasharray="6,4"/>
+                <text x="683" y="235" fill="var(--mut)" font-size="14" font-weight="600" font-family="var(--font-body)" text-anchor="middle">5개 남음</text>
+                <text x="800" y="235" fill="var(--mut)" font-size="14" font-family="var(--font-mono)">9/14</text>
+                <path d="M940 172 H948 V244 H940" fill="none" stroke="var(--mut)" stroke-width="2"/>
+                <text x="964" y="214" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-body)">진행 중</text>
+              </g>
+              <g data-step="3">
+                <!-- fork: 3/8 -->
+                <text x="184" y="304" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-mono)" text-anchor="end">fork</text>
+                <rect x="200" y="284" width="126" height="28" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+                <rect x="326" y="284" width="210" height="28" fill="color-mix(in srgb, var(--acc) 18%, var(--paper))" stroke="var(--acc)" stroke-width="3" stroke-dasharray="6,4"/>
+                <text x="431" y="303" fill="var(--acc)" font-size="14" font-weight="600" font-family="var(--font-body)" text-anchor="middle">5개 남음</text>
+                <text x="548" y="303" fill="var(--mut)" font-size="14" font-family="var(--font-mono)">3/8</text>
+                <!-- bad-*: 4/11 -->
+                <text x="184" y="348" fill="var(--ink)" font-size="16" font-weight="600" font-family="var(--font-mono)" text-anchor="end">bad-*</text>
+                <rect x="200" y="328" width="168" height="28" fill="color-mix(in srgb, var(--ink) 12%, var(--paper))" stroke="var(--mut)" stroke-width="2"/>
+                <rect x="368" y="328" width="294" height="28" fill="color-mix(in srgb, var(--acc) 18%, var(--paper))" stroke="var(--acc)" stroke-width="3" stroke-dasharray="6,4"/>
+                <text x="515" y="347" fill="var(--acc)" font-size="14" font-weight="600" font-family="var(--font-body)" text-anchor="middle">7개 남음</text>
+                <text x="674" y="347" fill="var(--mut)" font-size="14" font-family="var(--font-mono)">4/11</text>
+                <path d="M940 284 H948 V356 H940" fill="none" stroke="var(--acc)" stroke-width="2"/>
+                <text x="964" y="326" fill="var(--acc)" font-size="16" font-weight="600" font-family="var(--font-body)">남은 일</text>
+              </g>
+            </svg>
+        </div>
+    </div>
+    <div class="foot"><span>tests/userprog</span><span>도식</span></div>
+    <aside class="notes" data-sec="40">
+        <p>파일 계열은 거의 끝났고 fork와 bad-* 포인터 검사가 남았다고 맺는다.</p>
+    </aside>
+</section>
+
+<!-- ============================================================
+     06 · Closing
+     ============================================================ -->
+<section class="slide closing" id="s6">
+    <div class="head"><span>마무리</span><span class="num"></span></div>
+    <div class="slide-content">
+        <h1>시스템 콜은 레지스터로 건너는 경계다</h1>
+        <h1>다음은 fork와 포인터 검사</h1>
+        <div class="rule"></div>
+        <p class="thanks">감사합니다</p>
+    </div>
+    <div class="foot"><span>2026-10 · PROJECT 2</span><span>시스템 콜</span></div>
+    <aside class="notes" data-sec="20">
+        <p>경계를 지키는 일이 check_address 한 줄에 달려 있다는 말로 맺는다.</p>
+    </aside>
+</section>
+
+<div id="notesPanel" hidden aria-live="polite">
+    <div class="meta"><span id="nSlide"></span><span>참고 시간 <b id="nSec"></b>초</span><span id="nStep"></span><span id="nTotal"></span></div>
+    <div class="body" id="nBody"></div>
+</div>
+
+<div id="helpOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-box">
+        <h2 id="helpTitle">단축키</h2>
+        <dl>
+            <dt>→ · Space</dt><dd>다음 단계, 마지막 단계 뒤에는 다음 슬라이드</dd>
+            <dt>←</dt><dd>이전 단계, 단계가 없으면 이전 슬라이드</dd>
+            <dt>Home · End</dt><dd>처음 · 마지막 슬라이드</dd>
+            <dt>N</dt><dd>발표자 노트 열고 닫기</dd>
+            <dt>E</dt><dd>편집 모드: 글자나 노트를 눌러 고치기</dd>
+            <dt>Tab</dt><dd>편집 중: 고르던 글자의 크기 버튼으로 (글자 크기, 상자 너비) · ← → 고르기 · Esc 돌아가기</dd>
+            <dt>Ctrl+S</dt><dd>저장: 에이전트가 연 주소면 원본 파일에, 파일로 열었으면 다운로드 폴더에</dd>
+            <dt>R</dt><dd>에이전트가 고친 뒤 새로고침 (알림이 떴을 때)</dd>
+            <dt>?</dt><dd>이 도움말 열고 닫기 (Esc로도 닫힘)</dd>
+        </dl>
+        <p class="help-save">고친 뒤 저장하고 에이전트에게 말해 주세요.</p>
+    </div>
+</div>
+<div id="notices" role="status" aria-live="polite"></div>
+<div id="sizeBar" role="toolbar" aria-label="크기 조절" hidden>
+    <button data-kind="t" data-dir="-1" aria-label="글자 작게">글자 −</button>
+    <button data-kind="t" data-dir="1" aria-label="글자 크게">글자 +</button>
+    <button data-kind="w" data-dir="-1" aria-label="상자 좁게">상자 −</button>
+    <button data-kind="w" data-dir="1" aria-label="상자 넓게">상자 +</button>
+    <button data-kind="reset" aria-label="기본 크기">기본</button>
+</div>
+<div id="firstHint" hidden role="status">? 키로 단축키를 볼 수 있어요 · 고친 뒤 저장하고 에이전트에게 말해 주세요.</div>
+
+<script>
+/* ===========================================
+   Deck controller: steps, hash, notes
+   =========================================== */
+const slides = Array.from(document.querySelectorAll('.slide'));
+const total = slides.length;
+
+/* ===========================================
+   In-browser editor. Every slide is kept by its section id.
+   Served by scripts/serve.py: Ctrl+S writes the changed sections into the
+   source file (a three-way save against the jd-base hash). Opened as a
+   file: Ctrl+S downloads the deck. Edits autosave to localStorage.
+   =========================================== */
+/* One key per deck file, so two decks on the same origin do not collide */
+const STORE = 'jungle-deck:' + location.pathname;
+const STASH = STORE + ':stash:';   /* + base hash: autosaves the file changed under */
+
+/* Strip edit traces (contenteditable, step state) */
+function scrub(root) {
+    root.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
+    root.querySelectorAll('.on').forEach(e => e.classList.remove('on'));
+    root.querySelectorAll('[data-jd-over]').forEach(e => e.removeAttribute('data-jd-over'));
+    root.querySelectorAll('[class=""]').forEach(e => e.removeAttribute('class'));
+    root.querySelectorAll('[style*="--box-w"]').forEach(e => {   /* runtime width, set by fitBoxes */
+        e.style.removeProperty('--box-w');
+        if (!e.getAttribute('style')) e.removeAttribute('style');
+    });
+    return root;
+}
+/* One slide as it is saved: no edit traces, no runtime slide number */
+function sectionHTML(s) {
+    const c = scrub(s.cloneNode(true));
+    const num = c.querySelector('.head .num');
+    if (num) num.textContent = '';
+    return c.innerHTML;
+}
+const sectionsNow = () => Object.fromEntries(slides.map(s => [s.id, sectionHTML(s)]));
+
+/* pure: begin */
+/* Save rules on {id: html} maps, no DOM. tests/test_stage_save.py runs this block in Node */
+/* Write sections into slide elements by id, never by position: the page, or a copy */
+function applySections(map, els) {
+    els.forEach(s => { if (s.id in map) s.innerHTML = map[s.id]; });
+}
+function changed(base, current) {
+    const out = {};
+    for (const id in current) if (id in base && current[id] !== base[id]) out[id] = current[id];
+    return out;
+}
+/* Autosave record: changed sections only, each with the base it was edited from */
+function autosaveRecord(baseHash, base, current) {
+    const ids = Object.keys(changed(base, current));
+    if (!ids.length) return null;
+    const sections = {};
+    ids.forEach(id => { sections[id] = { base: base[id], current: current[id] }; });
+    return { base_hash: baseHash, sections };
+}
+/* At load: the same base puts the edits back by id; anything else is a stash */
+function restorePlan(saved, baseHash, now) {
+    const ids = Object.keys(saved.sections);
+    if (saved.base_hash !== baseHash || ids.some(id => !(id in now))) return { stash: true, apply: {} };
+    const apply = {};
+    ids.forEach(id => { apply[id] = saved.sections[id].current; });
+    return { stash: false, apply };
+}
+/* Restore (복원) without the server: a three-way merge in the page. A section takes the
+   stashed edit only while it still holds the base the edit was made from */
+function mergeStash(stash, now) {
+    const apply = {}, conflicts = [];
+    for (const id in stash.sections) {
+        const s = stash.sections[id];
+        if (now[id] === s.base) apply[id] = s.current;
+        else conflicts.push(id);
+    }
+    return { apply, conflicts: conflicts.sort() };
+}
+/* Restore with the server: a normal three-way save of the stash */
+function stashPayload(stash) {
+    const sections = {};
+    for (const id in stash.sections) sections[id] = stash.sections[id].current;
+    return { base_hash: stash.base_hash, sections };
+}
+/* The words of a section: tags dropped, entities decoded, whitespace removed. Removed,
+   not collapsed: a layout change moves the breaks between blocks (</h2><p> vs </h2>\n<p>) */
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+function plainText(html) {
+    return html.replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
+            e[0] !== '#' ? (ENTITIES[e.toLowerCase()] ?? m)
+            : /^#x/i.test(e) ? String.fromCodePoint(parseInt(e.slice(2), 16))
+            : String.fromCodePoint(parseInt(e.slice(1), 10)))
+        .replace(/\s+/g, '');
+}
+/* The student's size steps in a section (jd-t-*, jd-w-*), in document order */
+const sizeSteps = html => (html.match(/\bjd-[tw]-[sl]\d\b/g) || []).join(' ');
+/* Student saves whose words or size steps the file no longer holds (an agent edit
+   overwrote them). Not the rest of the markup: the agent may change the layout around
+   them. An id gone from the file is not flagged: there is nothing to restore into */
+function overwritten(saved, file) {
+    return Object.keys(saved)
+        .filter(id => id in file && (plainText(saved[id]) !== plainText(file[id])
+                                     || sizeSteps(saved[id]) !== sizeSteps(file[id])))
+        .sort();
+}
+
+/* Saved slides whose id the file no longer holds: the agent deleted them */
+function deletedSlides(saved, file) {
+    return Object.keys(saved).filter(id => !(id in file)).sort();
+}
+/* Overflow on one measured box: {sw, cw, sh, ch} its scroll and client sizes, r its
+   rect [left, top, right, bottom], clip the rect of the nearest ancestor that clips
+   it (null: none), cuts: the box cuts long lines on purpose (code in a <pre>), so only
+   its height counts. Over: the content is larger than the box, or the box reaches past
+   the clip on any side (centered content overflows at the top too). 1 px is rounding */
+const OVER_PX = 1;
+function overflows(m) {
+    if ((!m.cuts && m.sw > m.cw + OVER_PX) || m.sh > m.ch + OVER_PX) return true;
+    const c = m.clip, [l, t, r, b] = m.r;
+    return !!c && (l < c[0] - OVER_PX || t < c[1] - OVER_PX || r > c[2] + OVER_PX || b > c[3] + OVER_PX);
+}
+
+/* The boxes under el that clip their content (clips(el) says so), for the overflow check.
+   Not real run output, not SVG: the student cannot fix them, and a log line cut at the
+   panel edge is on purpose. Not the notes: they are not on the slide */
+function clippingBoxes(el, clips, out = []) {
+    Array.from(el.children).forEach(c => {
+        if (c.hasAttribute('data-evidence') || /^svg$/i.test(c.tagName)
+            || (c.tagName === 'ASIDE' && c.classList.contains('notes'))) return;
+        if (clips(c)) out.push(c);
+        clippingBoxes(c, clips, out);
+    });
+    return out;
+}
+
+/* Edit rules on element-like nodes (tagName, childNodes, children, hasAttribute, classList).
+   Editable: the outermost elements in a slide that hold text of their own. Locked: real
+   run output under [data-evidence], the notes (edited in the notes panel), the slide
+   number, and SVG (its text is not editable in place) */
+function editableIn(el, out = []) {
+    if (el.hasAttribute('data-evidence') || el.classList.contains('num') || /^svg$/i.test(el.tagName)
+        || (el.tagName === 'ASIDE' && el.classList.contains('notes'))) return out;
+    if (Array.from(el.childNodes).some(n => n.nodeType === 3 && n.nodeValue.trim())) out.push(el);
+    else Array.from(el.children).forEach(c => editableIn(c, out));
+    return out;
+}
+/* Size steps the student sets: classes from a fixed scale of ±2, saved with the section.
+   null is the template size; the factors are the :root variables of the same names */
+const TEXT_STEPS = ['jd-t-s2', 'jd-t-s1', null, 'jd-t-l1', 'jd-t-l2'];
+const BOX_STEPS = ['jd-w-s2', 'jd-w-s1', null, 'jd-w-l1', 'jd-w-l2'];
+/* One step along `steps` (dir ±1, or 0 for the template size); stops at ±2 */
+function step(classes, steps, dir) {
+    const cur = steps.indexOf(classes.find(c => steps.includes(c)) ?? null);
+    const next = dir ? steps[Math.max(0, Math.min(steps.length - 1, cur + dir))] : null;
+    return classes.filter(c => !steps.includes(c)).concat(next ? [next] : []);
+}
+/* pure: end */
+
+/* Served: serve.py puts the hash of the served version in a jd-base meta */
+const baseMeta = document.querySelector('meta[name="jd-base"]');
+const served = !!baseMeta && location.protocol.startsWith('http');
+/* base: every section as loaded, captured before any autosave restore */
+const base = sectionsNow();
+/* Opened as a file: a hash of the sections stands in for the server's hash */
+const signature = (() => {
+    const src = Object.values(base).join('\u0000');
+    let h = 5381;
+    for (let i = 0; i < src.length; i++) h = ((h * 33) ^ src.charCodeAt(i)) >>> 0;
+    return src.length + '-' + h.toString(36);
+})();
+let baseHash = served ? baseMeta.content : signature;
+const unsaved = () => Object.keys(changed(base, sectionsNow())).length > 0;
+
+/* Notices: one line each, by key; a later notice with the same key replaces it */
+const notices = document.getElementById('notices');
+function notice(key, text, actions) {
+    let n = notices.querySelector('[data-key="' + key + '"]');
+    if (!n) {
+        n = document.createElement('div');
+        n.className = 'notice';
+        n.dataset.key = key;
+        notices.appendChild(n);
+    } else if (!actions && n.textContent === text) return;   /* the poll repeats itself */
+    n.replaceChildren(text);
+    (actions || []).forEach(([label, fn]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.addEventListener('click', fn);
+        n.appendChild(b);
+    });
+}
+function clearNotice(key) {
+    const n = notices.querySelector('[data-key="' + key + '"]');
+    if (n) n.remove();
+}
+const STORAGE_FAILED = '자동 저장이 안 돼요 — 지금 Ctrl+S로 저장하세요';
+const SERVER_OFF = "서버가 꺼져 있어요. 에이전트에게 '서버 다시 켜줘'라고 말해 주세요";
+
+/* ===========================================
+   Overflow notice: after load, after each edit or size step, and on resize,
+   mark every box whose text does not fit and name its slides. No auto-fix:
+   the agent adjusts the layout
+   =========================================== */
+const rectOf = el => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+const clipsContent = el => { const cs = getComputedStyle(el); return cs.overflowX !== 'visible' || cs.overflowY !== 'visible'; };
+/* The boxes to check in a slide: its text and every box that clips (see clippingBoxes) */
+const boxesIn = s => [...new Set([...editableIn(s), ...clippingBoxes(s, clipsContent)])]
+    .filter(e => e.getClientRects().length);
+function measure(el) {
+    let a = el.parentElement;
+    while (a && !clipsContent(a) && !a.classList.contains('slide')) a = a.parentElement;
+    return { sw: el.scrollWidth, cw: el.clientWidth, sh: el.scrollHeight, ch: el.clientHeight,
+             r: rectOf(el), clip: a ? rectOf(a) : null,
+             cuts: el.tagName === 'PRE' && getComputedStyle(el).whiteSpace === 'pre' };
+}
+/* Checked once the typing settles, and never while a step slides in: measuring holds
+   every step in place, which would cut that reveal short */
+const OVER_WAIT_MS = 300;
+let overTimer = 0, stepAt = 0, overShown = '', overDismissed = '';
+function scheduleOverflow() {
+    clearTimeout(overTimer);
+    overTimer = setTimeout(checkOverflow, OVER_WAIT_MS);
+}
+function checkOverflow() {
+    if (performance.now() - stepAt < 600) return scheduleOverflow();   /* the reveal takes --dur (.5s) */
+    document.body.classList.add('jd-measure');   /* hidden steps sit 14px low until shown */
+    const found = slides.map(s => boxesIn(s).map(el => [el, overflows(measure(el))]));   /* read all, then mark */
+    document.body.classList.remove('jd-measure');
+    found.flat().forEach(([el, over]) => el.toggleAttribute('data-jd-over', over));
+    const ids = slides.filter((s, i) => found[i].some(([, over]) => over)).map(s => s.id);
+    const key = ids.join(', ');
+    if (!key) { overShown = overDismissed = ''; return clearNotice('overflow'); }
+    if (key === overDismissed || key === overShown) return;   /* 닫기 holds until the set changes */
+    overShown = key;
+    notice('overflow', '글이 상자를 넘쳐요 (' + key + ') — 에이전트에게 레이아웃 조정을 부탁하세요', [
+        ['닫기', () => { overDismissed = key; overShown = ''; clearNotice('overflow'); }],
+    ]);
+}
+window.addEventListener('resize', scheduleOverflow);
+window.addEventListener('load', scheduleOverflow);
+document.fonts.ready.then(scheduleOverflow);
+
+function saveLocal() {
+    try {
+        const rec = autosaveRecord(baseHash, base, sectionsNow());
+        if (rec) localStorage.setItem(STORE, JSON.stringify(rec));
+        else localStorage.removeItem(STORE);
+        clearNotice('storage');
+    } catch (e) {
+        notice('storage', STORAGE_FAILED);
+    }
+    scheduleOverflow();   /* every change autosaves, so every change is checked */
+}
+function dropStash(key) {
+    try { localStorage.removeItem(key); } catch (e) { notice('storage', STORAGE_FAILED); }
+    clearNotice(key);
+}
+
+/* The file changed under an autosave: keep it aside and offer it back */
+function showStash(key, stash) {
+    notice(key, '저장 안 된 편집이 있어요 (' + Object.keys(stash.sections).join(', ')
+                + ') — 그 뒤에 파일이 바뀌었어요', [
+        ['복원', () => restoreStash(key, stash)],
+        ['파일로 내보내기', () => exportFile(stashPayload(stash).sections)],
+        ['닫기', () => clearNotice(key)],   /* hides it until the next load; the stash stays */
+    ]);
+}
+async function restoreStash(key, stash) {
+    if (served) {
+        const payload = stashPayload(stash);
+        const r = await send(payload, false);
+        if (r && r.status < 300) {
+            applySections(payload.sections, slides);
+            renderNotes();
+            fitBoxes();
+            saveLocal();
+        }
+        if (r && (r.status < 300 || (r.status === 409 && r.body.payload))) dropStash(key);
+        return;
+    }
+    const plan = mergeStash(stash, sectionsNow());
+    applySections(plan.apply, slides);
+    renderNotes();
+    fitBoxes();
+    saveLocal();
+    if (!plan.conflicts.length) return dropStash(key);
+    const rest = { base_hash: stash.base_hash, sections: {} };
+    plan.conflicts.forEach(id => { rest.sections[id] = stash.sections[id]; });
+    try { localStorage.setItem(key, JSON.stringify(rest)); } catch (e) { notice('storage', STORAGE_FAILED); }
+    notice(key, '파일에서도 바뀐 슬라이드라 복원하지 못했어요 (' + plan.conflicts.join(', ')
+                + '). 파일로 내보내고 에이전트에게 말해 주세요', [
+        ['파일로 내보내기', () => exportFile(stashPayload(rest).sections)],
+        ['닫기', () => clearNotice(key)],
+    ]);
+}
+
+(function restoreLocal() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+        if (saved && !saved.sections) {
+            /* An autosave from the older page (by position): keep it, never apply it */
+            localStorage.setItem(STORE + ':stale', JSON.stringify(saved));
+            localStorage.removeItem(STORE);
+            notice('legacy', '예전 페이지의 자동 저장은 적용하지 않고 따로 보관했어요', [
+                ['닫기', () => clearNotice('legacy')],
+            ]);
+        } else if (saved) {
+            const plan = restorePlan(saved, baseHash, base);
+            if (plan.stash) {
+                const key = STASH + saved.base_hash;
+                const old = JSON.parse(localStorage.getItem(key) || 'null');
+                if (old) saved.sections = Object.assign(old.sections, saved.sections);
+                localStorage.setItem(key, JSON.stringify(saved));
+                localStorage.removeItem(STORE);
+            } else applySections(plan.apply, slides);
+        }
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith(STASH)) showStash(key, JSON.parse(localStorage.getItem(key)));
+        }
+    } catch (e) {
+        notice('storage', STORAGE_FAILED);
+    }
+})();
+
+/* ===========================================
+   Save: served -> POST /save; as a file -> download
+   =========================================== */
+const POLL_MS = 3000, POLL_SLOW_MS = 30000;
+let saving = false, conflicted = false, savedTimer = null;
+
+/* POST a JSON body with the page's save headers. Returns {status, body}, or
+   null when the server did not answer */
+async function post(path, body) {
+    try {
+        const res = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Jungle-Deck': 'save' },
+            body: JSON.stringify(body),
+        });
+        return { status: res.status, body: await res.json().catch(() => ({})) };
+    } catch (e) {
+        return null;
+    }
+}
+
+/* GET /version -> {slug, source, hash}, or null when the server did not answer */
+async function version() {
+    try {
+        const res = await fetch('/version', { cache: 'no-store' });
+        return res.ok ? await res.json() : null;
+    } catch (e) {
+        return null;
+    }
+}
+function flash(text) {
+    notice('saved', text);
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => clearNotice('saved'), 3000);
+}
+
+/* POST {base_hash, sections} to /save. `own`: the sections come from this
+   page's autosave, not from a stash. Returns {status, body}; null when the
+   server did not answer; undefined while another save runs */
+async function send(payload, own) {
+    if (saving) return undefined;
+    saving = true;
+    const r = await post('/save', payload);
+    saving = false;
+    if (!r) {
+        notice('off', SERVER_OFF);
+        exportFile(payload.sections);
+    } else if (r.status < 300) {
+        Object.assign(base, payload.sections);
+        rememberSaved(payload.sections);
+        /* Adopt the new hash only when the file held this page's base just
+           before the write (serve.py checks it under its save lock).
+           Otherwise the file also holds agent edits the page does not show:
+           keep the old hash, so a later save of such a section gets a 409
+           instead of overwriting it, and the poll offers R. A stash or a
+           restore is sent with another base, so it never moves this one */
+        if (r.body.base_current && payload.base_hash === baseHash) baseHash = r.body.hash;
+        conflicted = false;
+        saveLocal();
+        clearNotice('conflict'); clearNotice('error'); clearNotice('off');
+        const ids = r.body.written || [];
+        flash(ids.length ? '저장했어요 (' + ids.join(', ') + ')' : '바뀐 곳이 없어요');
+    } else if (r.status === 409) {
+        conflicted = true;
+        if (editing) toggleEdit();
+        notice('conflict', '에이전트 수정과 겹쳐요 (' + (r.body.conflicts || []).join(', ')
+                           + "). 에이전트에게 '겹친 거 합쳐줘'라고 말해 주세요");
+        if (r.body.payload) {
+            /* The agent merges these words into the file: they are the newest
+               student text to guard, not the older save */
+            rememberSaved(payload.sections);
+            /* the server kept the edits in _backup/, so the autosave may go */
+            if (own) try { localStorage.removeItem(STORE); } catch (e) { notice('storage', STORAGE_FAILED); }
+        }
+    } else {
+        notice('error', '저장이 안 됐어요 (HTTP ' + r.status + ') — 대신 파일로 내보냈어요');
+        exportFile(payload.sections);
+    }
+    return r;
+}
+
+function save() {
+    if (!served) return exportFile();
+    const sections = changed(base, sectionsNow());
+    if (!Object.keys(sections).length) return flash('바뀐 곳이 없어요');
+    send({ base_hash: baseHash, sections }, true);
+}
+
+/* ===========================================
+   Restore signal: an agent edit overwrote words the student saved.
+   After each 2xx save the page keeps the saved sections (survives R). On load
+   and on every file change it compares their words with the file's. 복원
+   saves them again with "restore": true; 그대로 두기 POSTs /keep. serve.py
+   logs `restore` or `keep`, and the agent reads that line
+   =========================================== */
+const SAVED = STORE + ':saved';   /* {id: html} of the last save of each section */
+function savedMap() {
+    try { return JSON.parse(localStorage.getItem(SAVED) || '{}'); }
+    catch (e) { notice('storage', STORAGE_FAILED); return {}; }
+}
+function rememberSaved(sections) {
+    try { localStorage.setItem(SAVED, JSON.stringify(Object.assign(savedMap(), sections))); }
+    catch (e) { notice('storage', STORAGE_FAILED); }
+}
+/* file: {id: html} of the source with the hash `fileHash` */
+function checkOverwrites(file, fileHash) {
+    const saved = savedMap();
+    const gone = deletedSlides(saved, file);   /* no 복원: the agent puts it back if it was a mistake */
+    if (gone.length) {
+        notice('deleted', '에이전트가 슬라이드를 지웠어요 (' + gone.join(', ') + ')', [
+            ['닫기', () => clearNotice('deleted')],
+        ]);
+        gone.forEach(id => { delete saved[id]; });   /* told once */
+        try { localStorage.setItem(SAVED, JSON.stringify(saved)); } catch (e) { notice('storage', STORAGE_FAILED); }
+    }
+    const ids = overwritten(saved, file);
+    if (!ids.length) return clearNotice('overwrite');
+    notice('overwrite', '에이전트 수정 뒤 내 저장 문구가 바뀌었어요 (' + ids.join(', ')
+                        + "). 복원하면 에이전트에게 '복원했어'라고 말해 주세요", [
+        ['복원', () => restoreSaved(ids, saved, fileHash)],
+        ['그대로 두기', () => keepAgent(ids)],
+        ['닫기', () => clearNotice('overwrite')],   /* back on the next load or file change */
+    ]);
+}
+async function restoreSaved(ids, saved, fileHash) {
+    /* A flagged slide with unsaved edits: saving first settles it. The restore
+       would either drop those edits or leave them on a base the file no longer holds */
+    const dirty = ids.filter(id => sectionHTML(document.getElementById(id)) !== base[id]);
+    if (dirty.length) {
+        return notice('restore-first', '복원하기 전에 먼저 저장(Ctrl+S)하세요 (' + dirty.join(', ') + ')', [
+            ['닫기', () => clearNotice('restore-first')],
+        ]);
+    }
+    const sections = {};
+    ids.forEach(id => { sections[id] = saved[id]; });
+    const r = await send({ base_hash: fileHash, sections, restore: true }, false);
+    if (!r || r.status >= 300) return;   /* send() showed why; a 409 kept the payload */
+    applySections(sections, slides);
+    renderNotes();
+    fitBoxes();
+    saveLocal();
+    clearNotice('overwrite');
+    notice('restored', '복원했어요 (' + ids.join(', ') + "). 에이전트에게 '복원했어'라고 말해 주세요", [
+        ['닫기', () => clearNotice('restored')],
+    ]);
+}
+async function keepAgent(ids) {
+    const r = await post('/keep', { keep: ids });
+    if (!r) return notice('off', SERVER_OFF);
+    if (r.status >= 300) return notice('error', '그대로 두기를 서버에 알리지 못했어요 (HTTP ' + r.status + ')');
+    /* The student took the agent's words: nothing of theirs left to guard there */
+    const saved = savedMap();
+    ids.forEach(id => { delete saved[id]; });
+    try { localStorage.setItem(SAVED, JSON.stringify(saved)); } catch (e) { notice('storage', STORAGE_FAILED); }
+    clearNotice('overwrite');
+}
+/* Fetch the source as served and check it; the jd-base meta names its hash */
+let checkedHash = null, checking = false;
+async function checkFile() {
+    if (checking) return;
+    checking = true;
+    try {
+        const res = await fetch(location.pathname, { cache: 'no-store' });
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const meta = doc.querySelector('meta[name="jd-base"]');
+        if (res.ok && meta) {
+            checkedHash = meta.content;
+            checkOverwrites(Object.fromEntries(
+                Array.from(doc.querySelectorAll('.slide'), s => [s.id, sectionHTML(s)])), meta.content);
+        }
+    } catch (e) {
+        /* the poll reports a server that is off */
+    }
+    checking = false;
+}
+if (served) {
+    checkedHash = baseHash;
+    checkOverwrites({ ...base }, baseHash);   /* base: the file as loaded */
+}
+
+/* Change notice: poll /version every 3 s; after two misses, every 30 s */
+let misses = 0, reloadReady = false;
+async function poll() {
+    const v = await version();
+    if (!v) {
+        misses++;
+        if (misses >= 2) { notice('off', SERVER_OFF); reloadReady = false; clearNotice('agent'); }
+        setTimeout(poll, misses >= 2 ? POLL_SLOW_MS : POLL_MS);
+        return;
+    }
+    if (misses >= 2) clearNotice('off');
+    misses = 0;
+    if (!saving && v.hash !== checkedHash) checkFile();
+    if (saving) {
+        /* the hash moves under a save; judge it on the next poll */
+    } else if (v.hash !== baseHash) {
+        /* After a 409 the server holds the edits in _backup/, so R is safe */
+        reloadReady = conflicted || !unsaved();
+        notice('agent', reloadReady ? '에이전트가 수정했어요 — R로 새로고침'
+                                    : '에이전트가 수정했어요 — 먼저 저장(Ctrl+S)하세요');
+    } else {
+        reloadReady = false;
+        clearNotice('agent');
+    }
+    setTimeout(poll, POLL_MS);
+}
+if (served) setTimeout(poll, POLL_MS);
+
+const pad = n => String(n).padStart(2, '0');
+let cur = 0;
+
+/* Steps on a slide = the largest data-step in it */
+const maxStep = s => Math.max(0, ...Array.from(s.querySelectorAll('[data-step]'), e => Number(e.dataset.step)));
+const shown = s => Number(s.dataset.shown || 0);
+
+function setShown(s, n) {
+    stepAt = performance.now();
+    s.dataset.shown = n;
+    s.querySelectorAll('[data-step]').forEach(e => e.classList.toggle('on', Number(e.dataset.step) <= n));
+    renderNotes();
+}
+
+function show(i, n) {
+    i = Math.max(0, Math.min(total - 1, i));
+    if (i !== cur) {
+        const out = slides[cur];
+        slides.forEach(s => s.classList.remove('leaving'));
+        out.classList.add('leaving');
+        clearTimeout(show.t);
+        show.t = setTimeout(() => out.classList.remove('leaving'), 400);   /* after the new slide's .35s fade */
+    }
+    cur = i;
+    slides.forEach((s, k) => {
+        s.classList.toggle('active', k === i);
+        s.setAttribute('aria-hidden', k === i ? 'false' : 'true');
+    });
+    setShown(slides[i], n);
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+    document.getElementById('progressBar').style.transform = 'scaleX(' + (i / Math.max(1, total - 1)) + ')';
+    Array.from(document.getElementById('navDots').children).forEach((b, k) => b.classList.toggle('active', k === i));
+}
+
+function next() {
+    const s = slides[cur];
+    if (shown(s) < maxStep(s)) setShown(s, shown(s) + 1);
+    else if (cur < total - 1) show(cur + 1, 0);
+}
+function prev() {
+    const s = slides[cur];
+    if (shown(s) > 0) setShown(s, shown(s) - 1);
+    else if (cur > 0) show(cur - 1, maxStep(slides[cur - 1]));   /* going back shows that slide fully */
+}
+
+/* Speaker notes */
+const notesPanel = document.getElementById('notesPanel');
+const totalSec = slides.reduce((a, s) => a + Number((s.querySelector('aside.notes') || {}).dataset?.sec || 0), 0);
+function renderNotes() {
+    const s = slides[cur];
+    const a = s.querySelector('aside.notes');
+    document.getElementById('nSlide').textContent = pad(cur + 1) + ' / ' + pad(total);
+    document.getElementById('nSec').textContent = a ? a.dataset.sec : '–';
+    document.getElementById('nStep').textContent = maxStep(s) ? '단계 ' + shown(s) + ' / ' + maxStep(s) : '단계 없음';
+    document.getElementById('nTotal').textContent = '참고 합계 ' + totalSec + '초';
+    document.getElementById('nBody').innerHTML = a ? a.innerHTML : '';
+}
+
+/* Slide numbers and nav dots */
+slides.forEach((s, i) => {
+    const num = s.querySelector('.head .num');
+    if (num) num.textContent = pad(i + 1) + ' / ' + pad(total);
+    const b = document.createElement('button');
+    b.setAttribute('aria-label', (i + 1) + '번 슬라이드로');
+    b.addEventListener('click', () => show(i, 0));
+    document.getElementById('navDots').appendChild(b);
+});
+
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') { e.preventDefault(); save(); return; }
+    if (sizeBar.contains(e.target)) {   /* ← → move between its buttons; Esc goes back to the text */
+        const bs = Array.from(sizeBar.querySelectorAll('button:not([hidden])'));
+        const i = bs.indexOf(e.target);
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length].focus();
+        } else if ((e.key === 'Escape' || (e.key === 'Tab' && e.shiftKey)) && selected) {
+            e.preventDefault();
+            selected.focus();
+            if (caret) { getSelection().removeAllRanges(); getSelection().addRange(caret); }
+        } else if (e.key === 'Tab' && selected) {   /* on to the next text, as Tab from the text would */
+            const els = Array.from(document.querySelectorAll('.slide.active [contenteditable="true"]'));
+            const to = els[els.indexOf(selected) + 1];
+            if (to) { e.preventDefault(); to.focus(); }
+        }
+        return;   /* Space and Enter press the button */
+    }
+    if (e.target.isContentEditable) {
+        if (e.key === 'Tab' && !e.shiftKey && !sizeBar.hidden) {
+            e.preventDefault();
+            caret = getSelection().rangeCount ? getSelection().getRangeAt(0).cloneRange() : null;
+            sizeBar.querySelector('button:not([hidden])').focus();
+        } else if (e.key === 'Escape') e.target.blur();   /* leave the caret so arrows navigate again */
+        return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    /* e.code, not e.key, so E, N, and ? work with a Korean IME on */
+    if (e.code === 'Slash') { e.preventDefault(); toggleHelp(); return; }
+    if (!helpOverlay.hidden) {
+        if (e.key === 'Escape') toggleHelp();
+        return;   /* the overlay holds the keys until it closes */
+    }
+    if (e.code === 'KeyE') { toggleEdit(); return; }
+    if (e.code === 'KeyR' && reloadReady) { location.reload(); return; }   /* the URL keeps #N */
+    if (e.code === 'KeyN') { notesPanel.hidden = !notesPanel.hidden; return; }
+    switch (e.key) {
+        case 'ArrowRight': case 'ArrowDown': case 'PageDown': case ' ':
+            e.preventDefault(); next(); break;
+        case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+            e.preventDefault(); prev(); break;
+        case 'Home': e.preventDefault(); show(0, 0); break;
+        case 'End':  e.preventDefault(); show(total - 1, 0); break;
+    }
+});
+
+let x0 = null;
+document.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = x0 - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) dx > 0 ? next() : prev();
+    x0 = null;
+}, { passive: true });
+
+/* Edit mode */
+let editing = false;
+const editToggle = document.getElementById('editToggle');
+const nBody = document.getElementById('nBody');
+
+function toggleEdit() {
+    editing = !editing;
+    document.body.classList.toggle('edit-active', editing);
+    editToggle.classList.toggle('active', editing);
+    editToggle.setAttribute('aria-label', editing ? '편집 모드 끄기' : '편집 모드 켜기');
+    if (editing) {
+        [...slides.flatMap(s => editableIn(s)), nBody].forEach(el => el.setAttribute('contenteditable', 'true'));
+        /* evidence inside an editable parent stays locked */
+        document.querySelectorAll('.slide [data-evidence]').forEach(el => el.setAttribute('contenteditable', 'false'));
+    } else document.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    if (!editing && document.activeElement) document.activeElement.blur();
+    selected = null;
+    placeBar();
+}
+
+/* Size toolbar: the selected slide text gets text steps; its box gets width steps */
+const BOX = '.panel, .card, .box, .content-box, .container, [data-box]';
+const sizeBar = document.getElementById('sizeBar');
+let selected = null;
+const boxOf = el => { const b = el.closest(BOX), s = el.closest('.slide'); return b && s && b !== s && s.contains(b) ? b : null; };
+let caret = null;   /* where the caret was in the selected text when Tab left it */
+function placeBar() {
+    if (!editing || !selected) { sizeBar.hidden = true; return; }
+    sizeBar.querySelectorAll('[data-kind="w"]').forEach(b => { b.hidden = !boxOf(selected); });
+    sizeBar.hidden = false;
+    const r = selected.getBoundingClientRect();
+    sizeBar.style.top = Math.max(4, r.top - sizeBar.offsetHeight - 8) + 'px';
+    sizeBar.style.left = Math.max(4, Math.min(innerWidth - sizeBar.offsetWidth - 4, r.left)) + 'px';
+}
+function applySize(kind, dir) {
+    const box = boxOf(selected);
+    const set = (el, steps, d) => { el.className = step([...el.classList], steps, d).join(' '); };
+    if (kind === 't') set(selected, TEXT_STEPS, dir);
+    else if (kind === 'w' && box) set(box, BOX_STEPS, dir);
+    else if (kind === 'reset') {   /* 기본: back to the template size */
+        set(selected, TEXT_STEPS, 0);
+        if (box) set(box, BOX_STEPS, 0);
+    }
+    fitBoxes();
+    saveLocal();
+    placeBar();
+}
+/* Width steps: the box's own width (measured without the step) times the step's
+   factor, at most up to the slide's content edge or the next box in its row */
+function fitBoxes() {
+    const factors = getComputedStyle(document.documentElement);
+    document.querySelectorAll('.slide [style*="--box-w"]').forEach(b => {
+        b.style.removeProperty('--box-w');
+        if (!b.getAttribute('style')) b.removeAttribute('style');
+    });
+    document.querySelectorAll('.slide [class*="jd-w-"]').forEach(b => {
+        const s = BOX_STEPS.find(c => c && b.classList.contains(c));
+        const area = b.closest('.slide-content');
+        if (!s || !area) return;
+        const r = b.getBoundingClientRect(), a = area.getBoundingClientRect();
+        let right = a.right - parseFloat(getComputedStyle(area).paddingRight);
+        const gap = parseFloat(getComputedStyle(b.parentElement).columnGap) || 0;
+        for (const n of b.parentElement.children) {
+            const q = n.getBoundingClientRect();
+            if (n !== b && q.left >= r.right - 1 && q.top < r.bottom && q.bottom > r.top) right = Math.min(right, q.left - gap);
+        }
+        const zoom = b.offsetWidth ? r.width / b.offsetWidth : 1;   /* a box with a text step is zoomed too */
+        const w = Math.max(0, Math.min(r.width * parseFloat(factors.getPropertyValue('--' + s)), right - r.left));
+        b.style.setProperty('--box-w', (w / zoom) + 'px');
+    });
+}
+document.addEventListener('focusin', e => {
+    if (sizeBar.contains(e.target)) return;
+    selected = editing && e.target.isContentEditable && e.target.closest('.slide') ? e.target : null;
+    placeBar();
+});
+document.addEventListener('focusout', e => {
+    const to = e.relatedTarget;
+    if (!to || !(sizeBar.contains(to) || to.isContentEditable)) { selected = null; placeBar(); }
+});
+sizeBar.addEventListener('mousedown', e => e.preventDefault());   /* the text keeps its caret */
+sizeBar.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b && selected) applySize(b.dataset.kind, Number(b.dataset.dir));
+});
+
+/* Any edit is saved at once */
+document.addEventListener('input', e => {
+    if (e.target === nBody) {
+        const a = slides[cur].querySelector('aside.notes');   /* notes panel writes back to its aside */
+        if (a) a.innerHTML = nBody.innerHTML;
+    }
+    fitBoxes();   /* new words change a box's own width */
+    saveLocal();
+});
+/* Paste plain text only, so outside formatting does not come in */
+document.addEventListener('paste', e => {
+    if (!e.target.closest || !e.target.closest('[contenteditable]')) return;
+    e.preventDefault();
+    document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+});
+
+/* overrides: {id: html} put into the copy by id (a stash export) */
+function exportFile(overrides) {
+    const doc = document.documentElement.cloneNode(true);
+    if (overrides) applySections(overrides, doc.querySelectorAll('.slide'));
+    scrub(doc);
+    doc.querySelector('body').removeAttribute('class');
+    doc.querySelectorAll('.slide').forEach(s => {
+        s.classList.remove('active', 'leaving'); s.removeAttribute('aria-hidden'); s.removeAttribute('data-shown');
+    });
+    doc.querySelector('#navDots').innerHTML = '';          /* the script rebuilds them */
+    doc.querySelector('#progressBar').removeAttribute('style');
+    doc.querySelector('#notesPanel').setAttribute('hidden', '');
+    doc.querySelectorAll('#notesPanel span[id], #notesPanel b[id], #nBody').forEach(e => e.textContent = '');
+    doc.querySelector('#editToggle').className = 'edit-toggle';
+    doc.querySelector('#editToggle').setAttribute('aria-label', '편집 모드 켜기');
+    doc.querySelector('#helpOverlay').setAttribute('hidden', '');
+    doc.querySelector('#firstHint').setAttribute('hidden', '');
+    doc.querySelector('#sizeBar').setAttribute('hidden', '');
+    doc.querySelector('#sizeBar').removeAttribute('style');
+    doc.querySelector('#notices').innerHTML = '';
+    const meta = doc.querySelector('meta[name="jd-base"]');   /* served copy only: the export is a file */
+    if (meta) meta.remove();
+    scrub(doc);
+    const blob = new Blob(['<!DOCTYPE html>\n' + doc.outerHTML], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    /* Same file name as the open deck, so the export can replace it */
+    a.download = decodeURIComponent(location.pathname.split('/').pop()) || 'deck.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* Edit button: appears when the mouse reaches the top-left corner */
+let hideTimer = null;
+const hotzone = document.querySelector('.edit-hotzone');
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimer); editToggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', () => {
+    hideTimer = setTimeout(() => { if (!editing) editToggle.classList.remove('show'); }, 400);
+});
+editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+editToggle.addEventListener('click', toggleEdit);
+
+/* ? overlay */
+const helpOverlay = document.getElementById('helpOverlay');
+function toggleHelp() {
+    helpOverlay.hidden = !helpOverlay.hidden;
+    if (!helpOverlay.hidden) firstHint.hidden = true;
+}
+helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) toggleHelp(); });
+
+/* One-time hint: the first time this deck opens in this browser */
+const firstHint = document.getElementById('firstHint');
+(function hintOnce() {
+    try {
+        if (localStorage.getItem(STORE + ':hinted')) return;
+        localStorage.setItem(STORE + ':hinted', '1');
+    } catch (e) {}   /* no storage: show it on every open rather than never */
+    firstHint.hidden = false;
+    firstHint.addEventListener('click', () => { firstHint.hidden = true; });
+    setTimeout(() => { firstHint.hidden = true; }, 10000);
+})();
+
+/* #3 opens slide 3 */
+const fromHash = () => {
+    const n = parseInt(location.hash.slice(1), 10);
+    return Number.isFinite(n) ? n - 1 : 0;
+};
+window.addEventListener('hashchange', () => { if (fromHash() !== cur) show(fromHash(), 0); });
+show(fromHash(), 0);
+fitBoxes();
+window.addEventListener('resize', fitBoxes);
+if (document.fonts) document.fonts.ready.then(fitBoxes);
+</script>
+</body>
+</html>

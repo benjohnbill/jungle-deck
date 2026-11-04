@@ -6,6 +6,15 @@ A Claude Code skill that builds a 2-minute Krafton Jungle presentation
 `BRIEF.md` in the presentation's save folder, so you can stop and resume at
 any time. The design is in [SPEC.md](SPEC.md).
 
+## Example
+
+Open a deck and step through it with the arrow keys. Press `N` for the speaker notes.
+
+- [Pintos system calls, version X](https://benjohnbill.github.io/jungle-deck/examples/pintos-syscall/deck-X.html): more detail in each figure.
+- [Pintos system calls, version Y](https://benjohnbill.github.io/jungle-deck/examples/pintos-syscall/deck-Y.html): one point in each figure.
+
+The same talk is drawn two ways. The chart data is sample data. The skill does not read these decks.
+
 ## Requirements
 
 - Claude Code on macOS, Windows, Linux, or WSL.
