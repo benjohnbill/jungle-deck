@@ -102,18 +102,15 @@ the phase; the fallback is complete.
 
 ## Verification state
 
-As of 2026-10-25: every phase is an unverified draft after the revisions
-(D19). The phase files pass their contract tests in `tests/` only. No phase
-has been verified on a real presentation yet.
+As of 2026-11-04, by the author's report: every phase ran on a real
+presentation before the figures change of 2026-10-29.
 
-- `revise` and `publish` are first verified on a nearly finished
-  presentation.
-- `grill`, `design`, and `build` are first verified on the next new
-  presentation.
+The figures change has not run on a real presentation. It covers the `Show`
+line in `reference/grill.md`, "Figures" in `reference/build.md`, and
+`vendor/diagram-design/`.
 
-While a phase is unverified, treat its phase file as a draft. When a step
-fails or does not fit the presentation, stop, tell the student what
-failed, and write it into `Next action` of BRIEF.md. Do not invent a
-replacement step. When a manual check passes, record it in its phase
-file. When a phase works end to end on a real presentation, update this
-section.
+Treat the figures change as a draft. When one of its steps fails or does not
+fit the presentation, stop, tell the student what failed, and write it into
+`Next action` of BRIEF.md. Do not invent a replacement step. When a manual
+check passes, record it in its phase file. When the figures change works end
+to end on a real presentation, update this section.

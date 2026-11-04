@@ -1,7 +1,7 @@
 ---
 scope: The grill phase (SPEC D7, D8): the opening question, the meta round, scoped context collection, the check-in, the grill rounds, the proposal rule, inline grilling
 authority: SPEC.md D7, D8, D10, D15, D22; docs/adr/0001-ask-before-collecting-context.md. tests/test_grill_reference.py checks the rules here; slot names follow reference/brief-template.md
-status: revised 2026-10-29 (Show line); unverified draft (D19)
+status: revised 2026-10-29 (Show line); ran on a real presentation before the Show line (author's report 2026-11-04). The Show line has not run on a real presentation
 ---
 
 # Grill phase

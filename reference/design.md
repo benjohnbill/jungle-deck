@@ -1,7 +1,7 @@
 ---
 scope: The design phase (SPEC D17, D25): style source, previews, accent, getdesign.md mapping, the Design section of BRIEF.md
 authority: SPEC.md D14, D17, D25, "Template tokens". tests/test_design_reference.py checks the rules here; its network test applies the mapping table below to every getdesign.md file
-status: new 2026-10-15; accent source key added for #29 2026-10-15; unverified draft (D19)
+status: new 2026-10-15; accent source key added for #29 2026-10-15; ran on a real presentation (author's report 2026-11-04)
 ---
 
 # Design phase

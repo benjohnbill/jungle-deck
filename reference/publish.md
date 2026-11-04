@@ -1,7 +1,7 @@
 ---
 scope: The publish phase (SPEC D12, D13, D14, D17): safety checks, deploy question, Pages copy, index card, one commit-and-push question, live check, DESIGN.md feedback
 authority: SPEC.md D12–D14 and "Pages". CLI lines here must match `scripts/publish.py --help`; tests/test_publish_reference.py checks them
-status: revised 2026-10-15 (#22, #26); unverified draft (D19)
+status: revised 2026-10-15 (#22, #26); ran on a real presentation (author's report 2026-11-04)
 ---
 
 # Publish phase

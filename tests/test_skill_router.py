@@ -200,23 +200,18 @@ class VerificationStateTest(unittest.TestCase):
         self.text = section(body, "Verification state")
         self.flat = " ".join(self.text.split())
 
-    def test_revise_and_publish_first_on_a_nearly_finished_presentation(self):
-        self.assertRegex(
-            self.flat,
-            r"`revise` and `publish`[^.]*first verified on a nearly finished presentation")
-
     def test_names_no_personal_deck(self):
         for personal in ("bsize", "week06", "T11"):
             self.assertNotIn(personal, self.text)
 
-    def test_grill_design_build_first_on_the_next_new_presentation(self):
-        self.assertRegex(
-            self.flat, r"`grill`, `design`, and `build`[^.]*first verified on the next "
-                       r"new presentation")
+    def test_every_phase_ran_before_the_figures_change(self):
+        self.assertRegex(self.flat, r"every phase ran on a real presentation before the figures change")
 
-    def test_every_phase_is_an_unverified_draft(self):
-        self.assertRegex(self.flat, r"every phase is an unverified draft")
-        self.assertRegex(self.flat, r"No phase has been verified on a real presentation yet")
+    def test_figures_change_is_a_draft(self):
+        self.assertRegex(self.flat, r"figures change has not run on a real presentation")
+        self.assertRegex(self.flat, r"Treat the figures change as a draft")
+        for path in ("reference/grill.md", "reference/build.md", "vendor/diagram-design/"):
+            self.assertIn(path, self.text)
 
     def test_passed_manual_checks_go_to_the_phase_files(self):
         self.assertRegex(self.flat, r"When a manual check passes, record it in its phase file")

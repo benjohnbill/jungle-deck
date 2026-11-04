@@ -1,7 +1,7 @@
 ---
 scope: The build phase (SPEC D9, D10, D13): stage template, style from the Design section, images, filling slides and notes from BRIEF.md, viewport check, usage guidance
 authority: SPEC.md D7, D9, D10, D13. tests/test_build_revise_reference.py checks the rules here
-status: revised 2026-10-29 (figures); unverified draft (D19)
+status: revised 2026-10-29 (figures); ran on a real presentation before the figures change (author's report 2026-11-04). Figures have not run on a real presentation
 ---
 
 # Build phase

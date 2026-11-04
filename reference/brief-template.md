@@ -1,7 +1,7 @@
 ---
 scope: The BRIEF.md file of one presentation: phases, save folder, resume, migration, skeleton
 authority: SPEC.md D3-D7, D13, D17, D21, D23. Slot names here are a contract with the phase files and their tests; change them together
-status: revised 2026-10-15; unverified draft (D19)
+status: revised 2026-10-15; ran on a real presentation (author's report 2026-11-04)
 ---
 
 # BRIEF.md template and phase contract

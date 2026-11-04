@@ -1,7 +1,7 @@
 ---
 scope: The revise phase (SPEC D11, D15): revise server, save in the page, read the change, adjust, conflicts, and the file-export fallback with pull_edits.py
 authority: SPEC.md D11, D15, "Revise server". CLI lines here must match `scripts/serve.py --help` and `scripts/pull_edits.py --help`; page behaviour must match templates/stage.html. tests/test_build_revise_reference.py checks them
-status: revised 2026-10-15 (#21, #28, #30, #31, #32); unverified draft (D19). Not verified yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
+status: revised 2026-10-15 (#21, #28, #30, #31, #32); ran on a real presentation (author's report 2026-11-04). No recorded result yet: whether a `run_in_background` server outlives the Claude Code session (SPEC "Verification plan"); record the result here
 ---
 
 # Revise phase

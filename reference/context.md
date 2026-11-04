@@ -1,7 +1,7 @@
 ---
 scope: The setting of the weekly Krafton Jungle talk, the same for every student and every week (SPEC "Shared Jungle context", D22)
 authority: SPEC.md "Shared Jungle context", D10, D22. tests/test_grill_reference.py checks the rows here
-status: revised 2026-10-15; unverified draft (D19)
+status: revised 2026-10-15; ran on a real presentation (author's report 2026-11-04)
 ---
 
 # Shared Jungle context
