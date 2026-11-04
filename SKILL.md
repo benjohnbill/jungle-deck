@@ -1,6 +1,7 @@
 ---
 name: jungle-deck
-description: "Presentation (발표 자료) for the weekly Krafton Jungle talk: settles the story and the design with the student, builds a 2-minute HTML slide page from the student's real run output, merges the student's browser saves through a local server, and publishes it to GitHub Pages. Resumes from BRIEF.md. Use when the student starts one (\"발표 자료 만들자\", \"발표 준비\", \"슬라이드 만들자\", or the old \"발표 덱\"), resumes one (\"jungle-deck 이어서\"), or publishes one (\"발표 자료 게시\", or the old \"덱 게시\")."
+description: "Build, resume, or publish the weekly Krafton Jungle 발표 자료 (2-minute HTML slides on GitHub Pages)."
+disable-model-invocation: true
 ---
 
 # jungle-deck
@@ -18,8 +19,8 @@ presentation, which the student chose when it was created.
 The student hears Korean, and the thing is "발표 자료" in every question,
 message, and suggested phrase. "덱" and "deck" stay in English documents,
 file names, and code keys only. Story stages use the Korean words 도입,
-전개, 전환, 마무리 (SPEC "Words": no Hanja). The old phrases "발표 덱" and "덱 게시" still start the skill;
-answer them in the new words.
+전개, 전환, 마무리 (SPEC "Words": no Hanja). When he says "발표 덱" or
+"덱 게시", answer with "발표 자료".
 
 ## Steps
 
