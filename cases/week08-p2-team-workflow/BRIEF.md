@@ -74,7 +74,7 @@ build에서 노트로 옮김 — 이후 수정은 페이지에서
 
 ## Design
 
-- Source: the student's own DESIGN.md (Plex Swiss Grid; same as week07, and the teammates built their HTML from it)
+- Source: the team's shared DESIGN.md (Plex Swiss Grid; same as week07, and the teammates built their HTML from it)
 - Tokens: `--paper: #ffffff` (neutral) · `--ink: #0a0a0a` (primary, the file's ink) · `--acc: #ff3300` · `--mut: #6b6b6b` (muted) · `--panel: #f7f7f5` (panel) · `--grid: #ebebeb` (grid). The student chose the file's own panel/grid/ink values over the mapping fallbacks. Fonts: `'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`; code `'IBM Plex Mono', monospace`.
 - Accent: #ff3300 (same as the team's decks, for unity)
 - Accent key: accent

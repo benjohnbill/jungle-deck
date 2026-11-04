@@ -93,7 +93,7 @@ s1 to s6: the student's script, in the page notes (2026-11-04). 이후 수정은
 
 ## Design
 
-- Source: the student's own DESIGN.md (Plex Swiss Grid). Student said: "기존에 썼던 발표 포맷하고 똑같음".
+- Source: the team's shared DESIGN.md (Plex Swiss Grid). Student said: "기존에 썼던 발표 포맷하고 똑같음".
 - Tokens: `--paper: #ffffff` (neutral) · `--ink: #0a0a0a` (primary, the file's ink) · `--acc: #ff3300` · `--mut: #6b6b6b` (muted) · `--panel: #f7f7f5` (panel) · `--grid: #ebebeb` (grid). The same values as week08: the file's own values, not the mapping fallbacks. Fonts: `'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`; code `'IBM Plex Mono', 'IBM Plex Sans KR', monospace` (the week08 page and DESIGN.md; Korean in the slide 04 tree needs the second font).
 - Accent: #ff3300
 - Accent key: accent

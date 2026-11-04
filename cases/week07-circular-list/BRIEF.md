@@ -27,4 +27,4 @@ Team: 1. the student (team result 30 s + personal) → 2. member A → 3. member
 | round | date | change |
 |---|---|---|
 | 1 | 2026-10-15 | Cut the cost slide (s8, thread.c:42) for time; the close loses its "대가" line. `lab/cost/` stays as evidence. |
-| 2 | 2026-10-15 | 05 cards redrawn (node inside / pointer inside / same type); 06 gains a self-pointing step and the student's thesis; 04 becomes a one-line divider (the the student's OS project table is cut). |
+| 2 | 2026-10-15 | 05 cards redrawn (node inside / pointer inside / same type); 06 gains a self-pointing step and the student's thesis; 04 becomes a one-line divider (the student's OS project table is cut). |
