@@ -83,6 +83,8 @@ Agents: if a path named here does not exist, report it to the owner.
 
 설정은 `~/.config/jungle-deck/jungle-deck.local.md`에 저장돼요. 스킬 폴더 밖에 있어서 설정을 저장할 때 권한을 묻지 않아요. 환경 변수 `JUNGLE_DECK_CONFIG`에 경로를 지정하면 그 파일을 써요.
 
+이미 설치했다면 스킬 폴더에서 `git pull origin main`을 실행해 업데이트하세요. 스킬 파일을 직접 고쳤다면 Git이 거부하니, 먼저 `git stash`를 실행하고 업데이트 뒤에 `git stash pop`을 실행하세요.
+
 ## 한계
 
 - 도식은 순서도, 시퀀스, 상태 전이, 타임라인, 트리, 계층, 막대 차트의 일곱 가지예요.
