@@ -22,7 +22,7 @@ Persona card A (`not-offered`): the `clear-plan` card. At the design question, t
 
 Persona card B (the other sub-features): the `clear-plan` card, plus these lines:
 - "참고할 디자인을 빠르게 보고 싶어요."
-- "week07-circular-list로 할게요. 타임라인은 week08 것을 쓰고 싶어요."
+- "week07-circular-list로 할게요. Branch graph는 week08 것을 쓰고 싶어요."
 - At the end of design: "그 발표는 어떻게 기획했어요?"
 
 Stop when `phase` is `build`. Turn cap 18.
@@ -31,7 +31,7 @@ Read the file calls from the transcript (`jdv.py report` names the sessions, and
 
 Pass predicates:
 
-- `not-offered`: in run A, no reply holds `cases/` or 사례, and no tool call has `cases/` in its input.
+- `not-offered`: in run A, no reply holds `cases/` or 사례, and no `Read`, `Grep`, `Glob`, or `Bash` call touches a path under `cases/`. `BRIEF.md` is written from the template, so a `Write` that holds the hint `cases/<case>/DESIGN.md` is expected.
 - `index-first`: in run B, the first `cases/` read is `cases/INDEX.md`, and it comes before any case `DESIGN.md`. Quote the rows shown.
 - `base-recorded`: `BRIEF.md` § Design has the `Source` line, and `Tokens` holds `#ff3300`.
 - `borrow-recorded`: `BRIEF.md` § Design has the `Figures from` line with a part name that `cases/INDEX.md` lists. `Tokens` did not change after the borrow.
@@ -40,5 +40,6 @@ Pass predicates:
 
 ## Gotchas
 
+- A card that says "타임라인" with week08 finds no such part, and the skill says so. Week08 calls it `Branch graph`. Measured 2026-11-05. The skill was right to refuse: keep the part name on the card.
 - The accent question still runs after the pick. Answer it from the card, not as a finding.
 - A reply that names getdesign.md for a case request is a FAIL for `index-first`: cases are separate from it.

@@ -28,6 +28,7 @@ Pass predicates:
 
 ## Gotchas
 
+- Measured 2026-11-05 (`week07-circular-list` base, `Branch graph` from week08, 21 student turns): `tokens-only` and `fits` passed, and the base look and the accent rule came through. `parts-used` failed for scenes: the page has no `.frames`, no `.two`, and no `.lit`. Grill fixes the `Show` lines before the case pick, and build draws only what `Show` names, so a case's composition cannot reach the page. Do not weaken this predicate: the fix belongs in the design phase.
 - Measured 2026-11-04 with a subagent, not with this path: one rebuild took 17 minutes and 131,000 tokens. Budget for it, and pick the case that the user cares about first.
 - Only `week07-circular-list` has had a rebuild, and that was its first draft. Report the others as unverified until they run.
 - Headless Chrome can stall on Google Fonts in WSL. `--headless` with `--virtual-time-budget` works where `--headless=new` hangs. Remove the font `<link>` and load a local copy for a screenshot; do not change the page.
