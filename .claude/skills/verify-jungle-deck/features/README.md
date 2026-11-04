@@ -11,6 +11,11 @@ The maintained source for verifying jungle-deck as a student meets it. Read
 | [slides-match-intent](slides-match-intent.md) | The built page carries the student's plan and fits the screen | 30 |
 | [figures-legible](figures-legible.md) | Each figure shows its `Show` line only, reads at slide size, and reveals in steps | 30 |
 | [token-delta](token-delta.md) | The new revision uses fewer tokens than the old one on the same persona | per feature |
+| [start-command](start-command.md) | `/jungle-deck` starts the skill, and speech does not | 1 |
+| [cases-on-request](cases-on-request.md) | Cases are never offered first, and a pick is recorded for build | 18 |
+| [cases-rebuild](cases-rebuild.md) | One case builds a new topic that keeps its impression | 30 |
+| [cases-public-safe](cases-public-safe.md) | Public case files hold no private fact and match their source | none |
+| [repo-state](repo-state.md) | Checkout, remote, CI, and a fresh clone agree | none |
 
 ## Baseline preconditions
 
