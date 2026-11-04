@@ -41,11 +41,15 @@ class ReadmeTest(unittest.TestCase):
                                     r"~/\.claude/skills/jungle-deck")
 
     def test_states_first_run(self):
-        self.assertRegex(self.text, r"(?im)^#+\s*first run")
+        self.assertRegex(self.text, r"(?m)^#+\s*처음 실행")
 
     def test_credits_frontend_slides_with_link(self):
-        self.assertRegex(self.text, r"(?im)^#+\s*credits")
+        self.assertRegex(self.text, r"(?m)^#+\s*크레딧")
         self.assertIn(UPSTREAM_URL, self.text)
+
+    def test_credits_diagram_design_with_link(self):
+        self.assertIn("https://github.com/cathrynlavery/diagram-design", self.text)
+        self.assertIn("vendor/diagram-design/SOURCE.md", self.text)
 
 
 class VendorTest(unittest.TestCase):

@@ -56,10 +56,10 @@ class DocsTest(unittest.TestCase):
         self.assertIn("~/.config/jungle-deck/jungle-deck.local.md", router)
         self.assertNotIn("in the skill directory", router)
 
-    def test_readme_troubleshooting_names_the_permission_prompt(self):
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("sensitive file", readme)
-        self.assertIn("bypassPermissions", readme)
+    def test_manual_troubleshooting_names_the_permission_prompt(self):
+        manual = (ROOT / "docs" / "MANUAL.md").read_text(encoding="utf-8")
+        self.assertIn("sensitive file", manual)
+        self.assertIn("bypassPermissions", manual)
 
 
 if __name__ == "__main__":

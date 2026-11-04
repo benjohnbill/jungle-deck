@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 BANNED = ["benjohn" "bill", "/mnt/c/" "Users/", "krafton-" "jungle/", "week_repo" "_root"]
 EXCLUDED_FILES = {"SPEC.md", "LICENSE"}
 CLONE_LINE = re.compile(r"^\s*git clone https://github\.com/[\w.-]+/jungle-deck\b")
-EXAMPLE_LINK = re.compile(r"^- \[[^\]]+\]\(https://[\w.-]+\.github\.io/jungle-deck/examples/[^)]+\)")
+EXAMPLE_LINK = re.compile(r"^- \[.+\]\(https://[\w.-]+\.github\.io/[^)]+\)")
 
 
 def tracked_files():

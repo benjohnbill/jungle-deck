@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DOCS = [ROOT / "SKILL.md", ROOT / "README.md", *sorted((ROOT / "reference").glob("*.md"))]
+DOCS = [ROOT / "SKILL.md", ROOT / "README.md", ROOT / "docs" / "MANUAL.md", *sorted((ROOT / "reference").glob("*.md"))]
 TEMPLATE = ROOT / "reference" / "local-template.md"
 
 
