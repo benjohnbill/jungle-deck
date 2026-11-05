@@ -54,9 +54,10 @@ class LandingPageTest(unittest.TestCase):
                 if re.search(r"(?<!인)덱", para):  # 인덱스 is another word
                     self.assertIn("예전 표현", para)
 
-    def test_says_which_example_is_the_closest(self):
+    def test_no_example_is_offered_as_the_standard_to_copy(self):
         row = next(l for l in README.splitlines() if "deck-Y.html" in l)
-        self.assertIn("가장 가까워요", row)
+        self.assertNotIn("가장 가까워요", row)
+        self.assertIn("따라 만들 기준이 아니에요", row)
 
     def test_example_links_come_before_the_install_steps(self):
         start = README.index("## 시작하기")

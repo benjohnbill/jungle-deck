@@ -6,8 +6,9 @@
 Status: active
 
 모든 단계를 실제 발표에서 돌려 봤어요. 완성 예시 보기:
-- [Pintos 시스템 콜, 버전 Y](https://benjohnbill.github.io/jungle-deck/examples/pintos-syscall/deck-Y.html): 최근 업데이트를 반영한 프로토타입이에요. 도식마다 요점을 하나만 담았고, 스킬이 만드는 결과물에 가장 가까워요.
+- [Pintos 시스템 콜, 버전 Y](https://benjohnbill.github.io/jungle-deck/examples/pintos-syscall/deck-Y.html): 최근 업데이트를 반영한 프로토타입이에요. 도식마다 요점을 하나만 담았어요. 사람이 보는 예시이며, 따라 만들 기준이 아니에요.
 - [Pintos 시스템 콜, 버전 X](https://benjohnbill.github.io/jungle-deck/examples/pintos-syscall/deck-X.html): 최근 업데이트를 반영한 프로토타입이에요. 도식마다 내용을 자세히 담았어요.
+- [디자인 문서로 만든 첫 초안](docs/examples/rebuilds/week07-stack-growth/README.md): 사례 `DESIGN.md`를 지정하고 사람이 손대지 않은 결과의 이미지예요. 한 번 돌린 결과이니 이 정도를 기준으로 삼고 여기서 다듬어 가세요.
 
 실제 발표 사례:
 - [함수에 들어가는 순간 배열이 아니다](https://benjohnbill.github.io/SW-AI-C/study/week04-array-in-c.html)

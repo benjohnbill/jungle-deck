@@ -51,6 +51,12 @@ class NoAuthorValuesTest(unittest.TestCase):
                 if "docs/examples" in (ROOT / f).read_text(encoding="utf-8")]
         self.assertEqual(hits, [])
 
+    def test_rebuild_examples_ship_no_page_source(self):
+        """A clone puts these files beside the skill, and an agent can copy a page's source."""
+        rebuilds = [f for f in tracked_files() if f.startswith("docs/examples/rebuilds/")]
+        self.assertTrue(rebuilds)
+        self.assertEqual([f for f in rebuilds if f.endswith((".html", ".svg", ".css"))], [])
+
     def test_untracked_files_are_not_checked(self):
         self.assertNotIn("jungle-deck.local.md", tracked_files())
 
