@@ -118,6 +118,8 @@ text from BRIEF.md and shows it to the student first.
 | `{description}` | Two or three sentences from the BRIEF.md title slide and metadata |
 | `{meta}` | `weekN · 2분 발표` |
 
+For a team deck, also add `data-scope="team"` after `data-kind`. An index with a team and personal split counts a deck without it as personal.
+
 `publish.py` verifies the card only by a grep for `{deck_url}` in the live index.
 
 ## Python check
