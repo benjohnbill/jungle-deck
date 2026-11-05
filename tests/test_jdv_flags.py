@@ -55,8 +55,8 @@ class SeedTest(unittest.TestCase):
             (talk / "talk.html").write_text("x", encoding="utf-8")
             (talk / "evidence.txt").write_text("real", encoding="utf-8")
             (talk / "BRIEF.md").write_text(
-                "---\nphase: build\nsource_repo: %s/week09\n---\n## Next action\n\nold\n\n"
-                "## Grill\n\nthesis\n\n## Design\n\n- Source: old\n\n## Build\n\n- Page file: old\n\n"
+                "---\nphase: build\nsource_repo: %s/week09\n---\n## Next action\n\nSTALE\n\n"
+                "## Grill\n\nthesis\n\n## Design\n\n- Source: STALE\n\n## Build\n\n- Page file: STALE\n\n"
                 "## Revise\n\nr\n" % src, encoding="utf-8")
             reference = run / "plugin" / "skills" / "jungle-deck" / "reference"
             reference.mkdir(parents=True)
@@ -75,7 +75,7 @@ class SeedTest(unittest.TestCase):
             self.assertIn("thesis", text)
             self.assertIn("- Source: TBD", text)
             self.assertIn("- Page file: TBD", text)
-            self.assertNotIn("old", text)
+            self.assertNotIn("STALE", text)
             self.assertEqual(sorted(p.name for p in talk.iterdir()), ["BRIEF.md", "evidence.txt"])
             self.assertIn(str(talk / "BRIEF.md"), (run / "jungle-deck.local.md").read_text(encoding="utf-8"))
 
