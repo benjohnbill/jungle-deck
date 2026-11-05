@@ -47,7 +47,7 @@ class TurnFlagsTest(unittest.TestCase):
 class SeedTest(unittest.TestCase):
     def test_seed_resets_design_and_keeps_grill_and_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
+            tmp = Path(tmp).resolve()
             src, run = tmp / "src", tmp / "run"
             talk = src / "week09" / "talk"
             (talk / "previews").mkdir(parents=True)

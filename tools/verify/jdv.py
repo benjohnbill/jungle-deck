@@ -157,7 +157,7 @@ def seed(run_dir, source):
     text = re.sub(r"^## Design\n.*?(?=^## Revise)", lambda _: empty, text, count=1, flags=re.S | re.M)
     brief.write_text(text, encoding="utf-8")
     for settings in (run_dir / "jungle-deck.local.md", run_dir / "plugin" / "skills" / "jungle-deck" / "jungle-deck.local.md"):
-        settings.write_text(re.sub(r'^current_brief: .*$', 'current_brief: "%s"' % brief,
+        settings.write_text(re.sub(r'^current_brief: .*$', lambda _: 'current_brief: "%s"' % brief,
                                    settings.read_text(encoding="utf-8"), count=1, flags=re.M), encoding="utf-8")
     print("seeded %s from %s: %s" % (run_dir, source, brief))
 
