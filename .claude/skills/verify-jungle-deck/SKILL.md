@@ -1,6 +1,6 @@
 ---
 name: verify-jungle-deck
-description: Verify the jungle-deck skill the way a student uses it. Runs one revision of the skill in headless Claude Code sessions against a synthetic student repo, with you playing a scripted student persona, then judges the transcript. Use to prove that the skill follows the student's plan (no forced topic or flow), helps a student with a vague or empty plan, builds slides that match the plan, and uses fewer tokens than an older revision.
+description: Verify the jungle-deck skill the way a student uses it. Runs one revision of the skill in headless Claude Code sessions against a synthetic student repo, with you playing a scripted student persona, then judges the transcript. Use to prove that the skill follows the student's plan (no forced topic or flow), helps a student with a vague or empty plan, builds slides that match the plan, uses fewer tokens than an older revision, starts only by slash command, reads cases/ only on request, and rebuilds a case on a new topic. For the repository itself, use audit-jungle-deck.
 ---
 
 # Verify jungle-deck
@@ -33,12 +33,14 @@ The student's first message is always `/jdv:jungle-deck`. Never use the bare
 ## Doctor
 
 ```
-python3 tools/verify/jdv.py turn <run> "Which skills do you have whose name contains jungle-deck? Names only." --new
+python3 tools/verify/jdv.py turn <run> "/jdv:jungle-deck" --new
 ```
 
-Pass when the reply lists `jdv:jungle-deck`. Then discard that run (it holds a
-non-student session) and stage a fresh one. Also check `claude --version`
-works and `git -C <run>/week09 log --oneline` shows 4 commits.
+Pass when the reply holds "이번 주 발표 자료를 어디에 저장할까요?". Then discard
+that run and stage a fresh one. Do not ask the model for its skill list: the
+skill has `disable-model-invocation: true`, so the list does not show it. Also
+check that `claude --version` works and that `git -C <run>/week09 log --oneline`
+shows 4 commits.
 
 ## Drive
 
@@ -69,7 +71,7 @@ Play the student from the persona card in the feature file. Rules for you:
   wording to the question asked.
 - When the skill offers a topic or a flow that is not on the card, say no and
   restate the card's plan. Record the quote: that is a finding.
-- When it asks "새 세션에서 'jungle-deck 이어서'…", follow it with
+- When it asks "새 세션에서 '/jungle-deck 이어서'…", follow it with
   `turn ... "/jdv:jungle-deck jungle-deck 이어서" --new`.
 - Cap each feature at the turn limit in its file. A run that hits the cap is
   a finding, not a pass.

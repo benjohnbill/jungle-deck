@@ -47,7 +47,7 @@ class LandingPageTest(unittest.TestCase):
 
     def test_user_facing_word_is_the_new_one(self):
         # SPEC "Words": the docs offer the new phrases; the old ones only as an old form.
-        self.assertIn("발표 자료 만들자", README)
+        self.assertIn("`/jungle-deck`", README)
         self.assertIn("발표 자료 게시", README)
         for doc in (README, MANUAL):
             for para in doc.split("\n\n"):

@@ -73,13 +73,15 @@ it:
 | `publish` | `reference/publish.md` (its own numbered steps, commit to live check) |
 | `done` | Nothing to run. Give the live URL from the `Publish` section. For a new presentation, follow "How to resume" step 3 in `reference/brief-template.md` |
 
+A student who asks for a ready design to reference, or names a published case, goes to "Cases" in `reference/design.md`.
+
 A BRIEF at `design` or later skips grilling (D6). Moving `phase` follows
 "Who changes `phase`" in `reference/brief-template.md`, at every phase.
 
 ### 4. Suggest one session break
 
 When `phase` moves from `design` to `build`, send this line once, after the
-BRIEF.md edit: "새 세션에서 'jungle-deck 이어서'라고 하면 가볍게 이어져요.
+BRIEF.md edit: "새 세션에서 '/jungle-deck 이어서'라고 입력하면 가볍게 이어져요.
 여기서 계속하려면 '계속'이라고 해 주세요." Then end your turn: do not start
 `build` in the same turn. Build starts here only when the student says to go
 on here. It is a suggestion, not a gate. Never repeat it (D27).

@@ -187,10 +187,11 @@ TBD
 
 Filled in `design` (D17). `build` reads the style only from this section (D9).
 
-- Source: TBD   (the student's DESIGN.md path, a reference URL or image, `getdesign.md/<brand>`, a frontend-slides discovery pick, or a vendored preset)
+- Source: TBD   (the student's DESIGN.md path, a reference URL or image, `getdesign.md/<brand>`, a frontend-slides discovery pick, a vendored preset, or `cases/<case>/DESIGN.md`)
 - Tokens: TBD   (`--paper`, `--ink`, `--acc`, `--mut`, `--panel`, `--grid`, and the fonts)
 - Accent: TBD
 - Accent key: TBD   (the DESIGN.md key the accent came from, `fallback`, `local.md (<key>)`, or `none`)
+- Figures from: none   (only with a case: `cases/<case>/DESIGN.md § <part name>`, one per borrowed part)
 
 ## Build
 

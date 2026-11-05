@@ -27,7 +27,7 @@ Read these first:
    A reference leads to step 3.1. A yes to getdesign.md leads to step 3.2. No to both leads to step 3.3 or 3.4.
    When the reference is the student's own DESIGN.md, write its path to `design_md` in local.md.
    When `design_md` is missing from local.md (not empty) and the student has no DESIGN.md, write `design_md: ""` (D16).
-3. **Pick the style source.** Use the first source that applies. Use one source only.
+3. **Pick the style source.** Use the first source that applies. Use one source only. (`Figures from` in "Cases" lends figure parts, not a second style.)
    1. The student's reference.
       A DESIGN.md: map it with "Token mapping".
       A site URL or an image: read its colors and fonts, then fill the same six tokens and the fonts by hand.
@@ -108,13 +108,31 @@ For each token, read the `colors:` keys in order. The first key that is present 
 Append a Korean font to each stack (`'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif`). A paid or proprietary family (for example `sohne-var`) falls back to a system font in the browser: say so to the student in one line.
 Keep the template's `clamp()` sizes. Take only `fontWeight`, `letterSpacing`, and `lineHeight`.
 
-**Only the color and type mood transfer.** Components, spacing scales, radii, shadows, gradients, and decorative signatures stay in the source file.
+**Only the color and type mood transfer** (a case is the exception, see "Cases"). Components, spacing scales, radii, shadows, gradients, and decorative signatures stay in the source file.
+
+## Cases
+
+`cases/` in the skill directory holds the author's finished talks. Read it only when one of these happens, at any time before `build`:
+
+- The student asks for a ready design to reference quickly.
+- The student asks to refer to a published case, or names one.
+
+Do not offer cases first. They are not part of step 2, and they are not getdesign.md references.
+
+1. Read `cases/INDEX.md` only. Show two or three rows that fit the topic, each with the path of its `preview.png`.
+2. The student picks one base. Read its `DESIGN.md`, and map it with "Token mapping". `Source` is `cases/<case>/DESIGN.md`. Its `preview.png` replaces step 4.1 and 4.2. Confirm the accent with step 4.3, then go to step 5.
+3. The student wants a part from another case: read that part in the other `DESIGN.md`, and add a `Figures from` line. Parts use `var(--...)`, so they take the base's colors. Tokens come from the base only.
+4. The student wants this case as the default: write the absolute path of its `DESIGN.md` to `design_md` in local.md. `Source` stays `cases/<case>/DESIGN.md`.
+5. Read a case's `BRIEF.md` only when the student asks how that talk was planned. It is a record, not a rule. It does not change the student's topic, flow, or slide count.
+
+A case's "Figure vocabulary" and "CSS to add" transfer to `build`. Never edit a file under `cases/`.
 
 ## The Design section
 
-Write these four lines in the `Design` section of `BRIEF.md`. `build` reads the style only from here (D9).
+Write these lines in the `Design` section of `BRIEF.md`. `build` reads the style only from here (D9).
 
 - `Source`: the student's DESIGN.md path, the reference URL or image, `getdesign.md/<brand>`, the frontend-slides pick, or the vendored preset name. `publish` branches on this value (D14).
 - `Tokens`: the six token values and the two font stacks, as written to `:root`. Mark each fallback (template value or `color-mix()`).
 - `Accent`: the confirmed accent color.
 - `Accent key`: its source key, from the table in step 3 of "Accent rule": a DESIGN.md `colors:` key, `fallback`, or `local.md (<key>)`. `none` when the color has no key (step 4.3, or a color the student gives that is not in the file).
+- `Figures from`: only with a case. One line per borrowed part: `cases/<case>/DESIGN.md § <part name>`. Otherwise `none`.
