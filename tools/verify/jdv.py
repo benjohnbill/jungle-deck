@@ -19,6 +19,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -130,6 +131,37 @@ def stage(run_dir, rev):
     print("staged %s at %s: plugin %s, repo %s" % (run_dir, rev, run_dir / "plugin", repo))
 
 
+def seed(run_dir, source):
+    """Give a staged run the repo and the Grill of a finished run, with `phase: design`, so a
+    feature about `design` or `build` skips the grill. Commit hashes change per stage, so the
+    repo comes along with the BRIEF that quotes them."""
+    run_dir, source = Path(run_dir).resolve(), Path(source).resolve()
+    load(run_dir)
+    repo = run_dir / "week09"
+    shutil.rmtree(repo)
+    shutil.copytree(source / "week09", repo, symlinks=True)
+    brief = brief_of(repo)
+    if brief is None:
+        sys.exit("%s has no BRIEF.md" % source)
+    for item in brief.parent.iterdir():
+        if item.is_dir() and item.name in ("previews", "_backup"):
+            shutil.rmtree(item)
+        elif item.suffix == ".html" or item.name.startswith(".serve"):
+            item.unlink()
+    template = (run_dir / "plugin" / "skills" / "jungle-deck" / "reference" / "brief-template.md").read_text(encoding="utf-8")
+    empty = re.search(r"^## Design\n.*?(?=^## Revise)", template, re.S | re.M).group(0)
+    text = brief.read_text(encoding="utf-8").replace(str(source), str(run_dir))
+    text = re.sub(r"^phase: .*$", "phase: design", text, count=1, flags=re.M)
+    text = re.sub(r"^## Next action\n.*?(?=^## Grill)", "## Next action\n\nStart `design` (`reference/design.md`).\n\n",
+                  text, count=1, flags=re.S | re.M)
+    text = re.sub(r"^## Design\n.*?(?=^## Revise)", lambda _: empty, text, count=1, flags=re.S | re.M)
+    brief.write_text(text, encoding="utf-8")
+    for settings in (run_dir / "jungle-deck.local.md", run_dir / "plugin" / "skills" / "jungle-deck" / "jungle-deck.local.md"):
+        settings.write_text(re.sub(r'^current_brief: .*$', 'current_brief: "%s"' % brief,
+                                   settings.read_text(encoding="utf-8"), count=1, flags=re.M), encoding="utf-8")
+    print("seeded %s from %s: %s" % (run_dir, source, brief))
+
+
 def transcript_of(repo, session):
     slug = re.sub(r"[^A-Za-z0-9]", "-", os.path.realpath(repo))
     return str(Path.home() / ".claude" / "projects" / slug / (session + ".jsonl"))
@@ -237,12 +269,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("stage"); s.add_argument("run_dir"); s.add_argument("rev")
+    e = sub.add_parser("seed"); e.add_argument("run_dir"); e.add_argument("source_run")
     t = sub.add_parser("turn"); t.add_argument("run_dir"); t.add_argument("message"); t.add_argument("--new", action="store_true")
     r = sub.add_parser("report"); r.add_argument("run_dirs", nargs="+")
     c = sub.add_parser("clean"); c.add_argument("run_dir")
     a = ap.parse_args()
     if a.cmd == "stage":
         stage(a.run_dir, a.rev)
+    elif a.cmd == "seed":
+        seed(a.run_dir, a.source_run)
     elif a.cmd == "turn":
         turn(a.run_dir, a.message, a.new)
     elif a.cmd == "report":

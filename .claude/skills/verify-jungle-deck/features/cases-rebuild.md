@@ -5,6 +5,8 @@ A `DESIGN.md` is worth keeping only if an agent that never saw the source deck c
 ## Sub-features
 
 - `build-from-case`: the real path, from a case pick to a built page.
+- `show-proposal`: after the pick, the skill proposes new `Show` lines once. The student's story stays.
+- `show-declined`: a student who declines keeps every `Show` line.
 - `parts-used`: the page draws with parts that the case names.
 - `tokens-only`: the figures use `var(--...)`, so a changed accent reaches them.
 - `fits`: `scripts/check_layout.py` passes.
@@ -18,8 +20,12 @@ A `DESIGN.md` is worth keeping only if an agent that never saw the source deck c
 
 Persona card: the `clear-plan` card (the stack-growth bug in the fixture), plus "<case>로 할게요." at the design question. The topic must differ from the case's own topic, and the fixture's topic does. Stop when `phase` is `revise`. Turn cap 30. Run `jdv.py clean <run>` after. Run one case per run. Do not run two at once: they share the user's hooks and rate limits.
 
+Cheaper path for a change in `design` or `build`: `stage`, then `seed <run> <finished run>`, then `turn <run> "/jdv:jungle-deck jungle-deck 이어서" --new`, and say "<case>로 할게요." The grill does not change, so it does not need to run. Run the two `show-*` predicates first, and stop there while the rule still changes. Go on to `revise` once per case.
+
 Pass predicates:
 
+- `show-proposal`: one message holds a table of current and new `Show` lines (quote it). Each new line names a row of the "Slides" table or a part. Compared with the BRIEF before the pick: every `Thesis`, `Role`, the slide count, the order, and the `Evidence list` have an empty diff. Only the lines the student took changed.
+- `show-declined`: in a separate run, the student answers "아니요, 그대로 둘게요". The `Slide theses` table has an empty diff. Stop at the next question.
 - `build-from-case`: `BRIEF.md` § Design has `Source: cases/<case>/DESIGN.md`, and the transcript has a read of that file before the first write of the page.
 - `parts-used`: at least two class names from the case's "Figure vocabulary" snippets appear in the page. Name them. A figure on the page that ignores the case's rule (for example, accent on every node) is a FAIL with a quote.
 - `tokens-only`: in the page's `<section>` elements, `grep -E '#[0-9a-fA-F]{3,8}\b'` has no hit in an SVG attribute.

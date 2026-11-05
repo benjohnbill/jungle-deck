@@ -19,7 +19,7 @@ Read these first:
 ## Steps
 
 1. **`design_md` is set.** Ask "이번에도 이 스타일로 갈까요?".
-   Yes: map that DESIGN.md with "Token mapping" below, confirm the accent with step 4.3 (and 4.4), and go to step 5.
+   Yes: map that DESIGN.md with "Token mapping" below, confirm the accent with step 4.3 (and 4.4), and go to step 5. When that file is a published case, follow "Show lines from a case" before step 5.
    No: go to step 2.
 2. **Ask for a reference.** Ask both questions in one message:
    "원하는 디자인 레퍼런스가 있어요? (사이트 URL, 이미지, DESIGN.md)" and
@@ -120,12 +120,22 @@ Keep the template's `clamp()` sizes. Take only `fontWeight`, `letterSpacing`, an
 Do not offer cases first. They are not part of step 2, and they are not getdesign.md references.
 
 1. Read `cases/INDEX.md` only. Show two or three rows that fit the topic, each with the path of its `preview.png`.
-2. The student picks one base. Read its `DESIGN.md`, and map it with "Token mapping". `Source` is `cases/<case>/DESIGN.md`. Its `preview.png` replaces step 4.1 and 4.2. Confirm the accent with step 4.3, then go to step 5.
+2. The student picks one base. Read its `DESIGN.md`, and map it with "Token mapping". `Source` is `cases/<case>/DESIGN.md`. Its `preview.png` replaces step 4.1 and 4.2. Confirm the accent with step 4.3, follow "Show lines from a case", then go to step 5.
 3. The student wants a part from another case: read that part in the other `DESIGN.md`, and add a `Figures from` line. Parts use `var(--...)`, so they take the base's colors. Tokens come from the base only.
 4. The student wants this case as the default: write the absolute path of its `DESIGN.md` to `design_md` in local.md. `Source` stays `cases/<case>/DESIGN.md`.
 5. Read a case's `BRIEF.md` only when the student asks how that talk was planned. It is a record, not a rule. It does not change the student's topic, flow, or slide count.
 
 A case's "Figure vocabulary" and "CSS to add" transfer to `build`. Never edit a file under `cases/`.
+
+### Show lines from a case
+
+Grill fixes each `Show` line before the pick, and `build` draws only what `Show` names. So a case reaches a slide's composition only through this step. Do it once. When the pick came before `Slide theses` was filled, do it when `phase` reaches `design`.
+
+1. Read the case's "Slides" table and "Figure vocabulary", and each part in `Figures from`.
+2. For each slide that a part fits, draft one new `Show` line. Name the row of the "Slides" table or the part in backticks, then say what it holds in the student's words. Example: "`Scene`: 왼쪽에 `vm/stack.c`의 한 줄, 오른쪽에 스택 그림 3장면". One part with its steps counts as one thing.
+3. Use only what the slide's thesis, its current `Show` line, and the `Evidence list` hold. When a part needs code or output that the `Evidence list` does not have, keep that slide's line. Stay within the Figure row of the density limits in `reference/build.md`.
+4. Send one message: a table of slide number, current line, and new line. Ask "사례의 구성에 맞춰 이 슬라이드들의 `Show`를 바꿀까요?". The student can take all, some, or none.
+5. Write only the lines the student takes. Never change a thesis, a role, the slide order, the slide count, or the `Evidence list` (SPEC D7). When no part fits, say so in one line and go on.
 
 ## The Design section
 
