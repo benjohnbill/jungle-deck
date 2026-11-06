@@ -283,4 +283,7 @@ def run(args):
 
 
 if __name__ == "__main__":
+    # A pipe on native Windows uses the ANSI code page (issue #40).
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     sys.exit(main())
