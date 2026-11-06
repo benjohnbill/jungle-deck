@@ -383,5 +383,31 @@ class GetdesignNetworkTest(unittest.TestCase):
             print(f"{kind} {len(names)}: {' '.join(names)}")
 
 
+class CaseShowLinesTest(unittest.TestCase):
+    """A case reaches a slide's composition only through `Show` (SPEC D28, issue #42)."""
+
+    def setUp(self):
+        self.text = DESIGN.read_text(encoding="utf-8")
+        self.rule = self.text.split("### Show lines from a case", 1)[1].split("\n## ", 1)[0]
+
+    def test_every_way_to_a_case_goes_through_the_proposal(self):
+        cases = self.text.split("## Cases", 1)[1].split("### Show lines", 1)[0]
+        steps = self.text.split("## Steps", 1)[1].split("\n2. ", 1)[0]
+        self.assertIn('"Show lines from a case"', cases)
+        self.assertIn('"Show lines from a case"', steps)
+
+    def test_student_decides_and_the_story_stays(self):
+        self.assertIn("all, some, or none", self.rule)
+        for kept in ("a thesis", "the slide order", "the slide count", "`Evidence list`"):
+            self.assertIn(kept, self.rule.split("Never change", 1)[1])
+
+    def test_no_evidence_is_invented(self):
+        self.assertIn("does not have, keep that slide's line", self.rule)
+
+    def test_build_uses_a_part_that_show_names(self):
+        build = (ROOT / "reference" / "build.md").read_text(encoding="utf-8")
+        self.assertIn("build that slide from those parts", build)
+
+
 if __name__ == "__main__":
     unittest.main()

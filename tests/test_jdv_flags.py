@@ -44,5 +44,41 @@ class TurnFlagsTest(unittest.TestCase):
             self.assertEqual(jdv.last_reply(t)[0], "끝")
 
 
+class SeedTest(unittest.TestCase):
+    def test_seed_resets_design_and_keeps_grill_and_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            src, run = tmp / "src", tmp / "run"
+            talk = src / "week09" / "talk"
+            (talk / "previews").mkdir(parents=True)
+            (talk / "previews" / "a.html").write_text("x", encoding="utf-8")
+            (talk / "talk.html").write_text("x", encoding="utf-8")
+            (talk / "evidence.txt").write_text("real", encoding="utf-8")
+            (talk / "BRIEF.md").write_text(
+                "---\nphase: build\nsource_repo: %s/week09\n---\n## Next action\n\nSTALE\n\n"
+                "## Grill\n\nthesis\n\n## Design\n\n- Source: STALE\n\n## Build\n\n- Page file: STALE\n\n"
+                "## Revise\n\nr\n" % src, encoding="utf-8")
+            reference = run / "plugin" / "skills" / "jungle-deck" / "reference"
+            reference.mkdir(parents=True)
+            (reference / "brief-template.md").write_text(
+                "## Design\n\n- Source: TBD\n\n## Build\n\n- Page file: TBD\n\n## Revise\n", encoding="utf-8")
+            for settings in (run / "jungle-deck.local.md", reference.parent / "jungle-deck.local.md"):
+                settings.write_text('current_brief: ""\n', encoding="utf-8")
+            (run / "week09").mkdir()
+            jdv.save(run, {"rev": "x", "plugin": "", "repo": "", "sessions": [], "turns": []})
+            with mock.patch("builtins.print"):
+                jdv.seed(run, src)
+            talk = run / "week09" / "talk"
+            text = (talk / "BRIEF.md").read_text(encoding="utf-8")
+            self.assertIn("phase: design", text)
+            self.assertIn("source_repo: %s/week09" % run.resolve(), text)
+            self.assertIn("thesis", text)
+            self.assertIn("- Source: TBD", text)
+            self.assertIn("- Page file: TBD", text)
+            self.assertNotIn("STALE", text)
+            self.assertEqual(sorted(p.name for p in talk.iterdir()), ["BRIEF.md", "evidence.txt"])
+            self.assertIn(str(talk / "BRIEF.md"), (run / "jungle-deck.local.md").read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,15 @@ by the student `student@example.com`, one by a teammate, notes, and
 `run_tests.py`). Ready when it prints `staged ...`. A staged directory is
 never reused: stage a fresh one per run.
 
+A feature about `design` or `build` can skip the grill. After `stage`, copy the
+student repo and the `Grill` of a finished run, with `phase: design`:
+
+```
+python3 tools/verify/jdv.py seed <run> <finished run>
+```
+
+The source must not hold a case's `Show` lines or a `Figures from` line.
+
 The student's first message is always `/jdv:jungle-deck`. Never use the bare
 `/jungle-deck`: that is the installed copy and the user's own settings.
 
