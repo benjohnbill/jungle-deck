@@ -5,7 +5,9 @@ Run: python3 -m unittest discover -s tests
 The byte-identity check reads the upstream files at the commit recorded in
 vendor/frontend-slides/SOURCE.md, from a local frontend-slides git checkout
 (FRONTEND_SLIDES_DIR, default: the Claude Code marketplace copy). It is skipped
-when no checkout is present.
+when no checkout is present, or when the checkout lacks that commit. The
+plugin manager re-clones its marketplace copy shallow on every update, so
+point FRONTEND_SLIDES_DIR at a full clone to run this check.
 """
 
 import os
@@ -70,6 +72,12 @@ class VendorTest(unittest.TestCase):
                          "no local frontend-slides checkout")
     def test_byte_identical_to_upstream_commit(self):
         commit = recorded_commit()
+        has_commit = subprocess.run(
+            ["git", "-C", str(UPSTREAM_DIR), "cat-file", "-e", f"{commit}^{{commit}}"],
+            capture_output=True).returncode == 0
+        if not has_commit:
+            self.skipTest(f"{UPSTREAM_DIR} lacks commit {commit} (shallow clone?); "
+                          "set FRONTEND_SLIDES_DIR to a full clone")
         for name in VENDORED:
             upstream = subprocess.run(
                 ["git", "-C", str(UPSTREAM_DIR), "show", f"{commit}:{name}"],

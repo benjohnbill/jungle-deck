@@ -118,6 +118,15 @@ FALLBACKS = {
 }
 
 
+class BuildIgnoresInstalledFrontendSlidesTest(unittest.TestCase):
+    """ADR 0002: frontend-slides 2.x requires a fixed stage; build keeps stage.html."""
+
+    def test_router_scopes_frontend_slides_to_design(self):
+        body = SKILL.read_text(encoding="utf-8")
+        self.assertIn("| `frontend-slides` skill (design) |", body)
+        self.assertIn("`build` never loads the installed `frontend-slides` skill", body)
+
+
 def section(body, heading):
     m = re.search(rf"(?ms)^## {heading}\n(.*?)(?=^## |\Z)", body)
     if not m:

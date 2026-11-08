@@ -32,7 +32,7 @@ Read these first:
       A DESIGN.md: map it with "Token mapping".
       A site URL or an image: read its colors and fonts, then fill the same six tokens and the fonts by hand.
    2. A getdesign.md pick. Follow "getdesign.md references".
-   3. `frontend-slides` style discovery, when that skill is installed: run its style discovery (mood, previews, pick).
+   3. `frontend-slides` style discovery, when that skill is installed: read its style catalog (`STYLE_PRESETS.md`; in 2.x also `bold-template-pack/selection-index.json`) and propose two or three styles that fit a bright room. Do not run its question flow or write its preview files; step 4 makes the previews. Only colors and fonts transfer: fill the six tokens and the fonts by hand, as for a site URL.
    4. The vendored presets: `vendor/frontend-slides/STYLE_PRESETS.md`. Propose two or three presets that fit a bright room and code on screen, and recommend one.
 4. **Previews, then the accent.**
    1. Write two or three previews to `<save folder>/previews/<name>.html`. Each is a copy of `templates/stage.html` with only the `:root` tokens changed.

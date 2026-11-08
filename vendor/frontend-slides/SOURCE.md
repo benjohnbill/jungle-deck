@@ -12,3 +12,5 @@ jungle-deck uses them only as a fallback when the frontend-slides skill is
 not installed (SPEC.md D15). Do not edit them here. To update, copy the
 files from a newer upstream commit and change the commit above;
 `tests/test_scaffold.py` checks that every file is byte-identical to it.
+The check needs a full clone in `FRONTEND_SLIDES_DIR`: the plugin manager's
+marketplace copy is shallow and lacks the commit, so the check skips there.

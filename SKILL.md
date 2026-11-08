@@ -95,7 +95,7 @@ the phase; the fallback is complete.
 | Dependency (phase) | Detect | Fallback |
 |---|---|---|
 | `grilling` skill (grill) | The session's skill list names `grilling` | The inline rules in `reference/grill.md`, section "Grilling rules" |
-| `frontend-slides` skill (design, build) | The skill list names `frontend-slides`, also as `frontend-slides:frontend-slides` | The vendored copies in `vendor/frontend-slides/` (MIT, upstream in `vendor/frontend-slides/SOURCE.md`) |
+| `frontend-slides` skill (design) | The skill list names `frontend-slides`, also as `frontend-slides:frontend-slides` | The vendored copies in `vendor/frontend-slides/` (MIT, upstream in `vendor/frontend-slides/SOURCE.md`). `build` never loads the installed `frontend-slides` skill; it uses only `templates/stage.html` and these copies (ADR 0002) |
 | `claude-mem` (grill) | A `claude-mem:mem-search` skill or an `mcp__plugin_claude-mem_*` search tool is available | Silently skip it as a context source |
 | `gh` (grill, publish) | `gh auth status` succeeds | Public REST API for a public repo, no Project board (`reference/grill.md`); ask for the Pages source folder (`reference/publish.md`) |
 | Revise server (revise) | `scripts/serve.py` starts and the student's browser reaches its address | File export and `scripts/pull_edits.py`: "Fallback: no server" in `reference/revise.md` |
