@@ -84,8 +84,9 @@ The 2-minute talk is background, not a gate (D10).
 The page shows on a large monitor in a bright room. Every slide must fit the screen with no scroll.
 
 - The template already holds the viewport contract from `vendor/frontend-slides/viewport-base.css`. Keep it. Every slide is one viewport high, with `overflow: hidden`.
+- Do not load the installed `frontend-slides` skill in build (ADR 0002). Its 2.x versions require a fixed 1920×1080 stage, which breaks this contract.
 - Use the template's `clamp()` size tokens for new text. Do not set a fixed `px` font size.
-- Keep each slide within the frontend-slides density limits:
+- Keep each slide within these density limits (from frontend-slides 1.0; 2.x replaced the table with density modes):
 
 | Slide type | Maximum content |
 |---|---|
