@@ -163,7 +163,13 @@ card markup of the built-in shape: a tag with `class="card"` and a
    that card as it is and do not add a second one.
 4. Show the drafted card to the student. Insert it into `index.html` in the
    group of that week. If no group matches, ask the student where to put
-   it.
+   it. A week group can hold collapsible boxes that each gather the cards of
+   one project (on the reference site, a `.hub` box with one `.phase` block
+   for each phase). When that group has such a box for the page's project,
+   insert the card into the box's `.cards` block, not into the week's
+   `.cards` block. Ask the student which box and which phase when it is
+   unclear. `publish.py verify` finds a card in a box the same as any other
+   card.
 
 ### 6. Ask once
 
